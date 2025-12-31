@@ -1,0 +1,18 @@
+services:
+  tv-news-carousel:
+    build: .
+    container_name: tv-news-carousel
+    ports:
+      - "3000:3000"
+    volumes:
+      # WINDOWS MAPPING:
+      # Maps your local 'data' folder to the container's public data folder
+      - ./data:/app/public/data
+      # Maps your local 'uploads' folder to the container's public uploads folder
+      - ./uploads:/app/public/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - ADMIN_USERNAME=sziszi
+      - ADMIN_PASSWORD=Sziszi2025%%
+    restart: unless-stopped

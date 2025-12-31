@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hírek</title>
+    <meta charset="utf-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: black; margin: 0; overflow: hidden; font-family: 'Roboto', sans-serif; }
+        
+        /* Fade In Animation */
+        .fade-anim { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Pulse Animation (Waiting Text) */
+        .pulse-text { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        /* Progress Bar Animation */
+        @keyframes loadBar { 
+            from { width: 0%; } 
+            to { width: 100%; } 
+        }
+
+        /* Ken Burns Effect */
+        .ken-burns {
+            animation: kenBurns 7s ease-in-out infinite;
+        }
+        @keyframes kenBurns {
+            0% {
+                transform: scale(1) translate(0, 0);
+            }
+            50% {
+                transform: scale(1.1) translate(-5%, -5%);
+            }
+            100% {
+                transform: scale(1) translate(0, 0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const bellSchedule = {
+          "schedule": [
+            { "ora": 0, "becsengetes": "07:00", "kicsengetes": "07:45" },
+            { "ora": 1, "becsengetes": "08:00", "kicsengetes": "08:45" },
+            { "ora": 2, "becsengetes": "09:00", "kicsengetes": "09:45" },
+            { "ora": 3, "becsengetes": "09:55", "kicsengetes": "10:40" },
+            { "ora": 4, "becsengetes": "10:50", "kicsengetes": "11:35" },
+            { "ora": 5, "becsengetes": "11:45", "kicsengetes": "12:30" },
+            { "ora": 6, "becsengetes": "12:45", "kicsengetes": "13:30" },
+            { "ora": 7, "becsengetes": "13:35", "kicsengetes": "14:20" },
+            { "ora": 8, "becsengetes": "14:25", "kicsengetes": "15:10" }
+          ]
+        };
+
+        function BellSchedule({ time }) {
+            const [nextBell, setNextBell] = React.useState(null);
+
+            React.useEffect(() => {
+                const now = time;
+                const day = now.getDay();
+                // Sunday (0) or Saturday (6)
+                if (day === 0 || day === 6) {
+                    setNextBell({ type: 'Hétvége', time: '' });
+                    return;
+                }
+                const currentTime = now.getHours() * 60 + now.getMinutes();
+
+                let next = null;
+
+                for (const period of bellSchedule.schedule) {
+                    const start = parseInt(period.becsengetes.split(':')[0]) * 60 + parseInt(period.becsengetes.split(':')[1]);
+                    const end = parseInt(period.kicsengetes.split(':')[0]) * 60 + parseInt(period.kicsengetes.split(':')[1]);
+
+                    if (currentTime < start) {
+                        if (!next || start < (parseInt(next.time.split(':')[0]) * 60 + parseInt(next.time.split(':')[1]))) {
+                           next = { type: 'becsengetes', time: period.becsengetes, ora: period.ora };
+                        }
+                    }
+                     if (currentTime < end) {
+                        if (!next || end < (parseInt(next.time.split(':')[0]) * 60 + parseInt(next.time.split(':')[1]))) {
+                            next = { type: 'kicsengetes', time: period.kicsengetes, ora: period.ora };
+                        }
+                    }
+                }
+                if(next === null && bellSchedule.schedule.length > 0) {
+                   next = { type: 'Vége', time: '' };
+                }
+
+
+                setNextBell(next);
+
+            }, [time]);
+
+            return (
+                <div>
+                    {nextBell && <p className="text-yellow-300 font-bold text-2xl text-right opacity-90" style={{textShadow: '-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'}}>{nextBell.type === 'Vége' ? 'Vége a tanításnak' : nextBell.type === 'Hétvége' ? 'Hétvége' : `🔔 Csengő: ${nextBell.time}`}</p>}
+                </div>
+            );
+        }
+
+        function Clock() {
+            const [time, setTime] = React.useState(new Date());
+
+            React.useEffect(() => {
+                const timer = setInterval(() => setTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            const timeString = time.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            return (
+                <div className="absolute top-0 right-0 p-5 pt-8 z-20" >
+                    <p className="text-7xl font-bold text-right text-white" style={{textShadow: '0 0 10px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.9)'}}>{timeString}</p>
+                    <BellSchedule time={time} />
+                </div>
+            );
+        }
+
+        function App() {
+            const [news, setNews] = React.useState([]);
+            const [idx, setIdx] = React.useState(0);
+            const [displayDuration, setDisplayDuration] = React.useState(5000);
+            const videoRef = React.useRef(null);
+
+            // --- CONFIGURATION ---
+            const DEFAULT_DISPLAY_TIME = 5000; // 5 seconds for non-video
+            // ---------------------
+
+            const loadData = () => {
+                fetch('/api/news')
+                    .then(r => r.json())
+                    .then(data => {
+                        setNews(prevNews => {
+                            if (JSON.stringify(prevNews) !== JSON.stringify(data)) {
+                                return data;
+                            }
+                            return prevNews;
+                        });
+                    })
+                    .catch(e => console.error(e));
+            };
+
+            React.useEffect(() => {
+                loadData();
+                const interval = setInterval(loadData, 3000); 
+                return () => clearInterval(interval);
+            }, []);
+
+            React.useEffect(() => {
+                if (news.length === 0) return;
+        
+                const currentItem = news[idx];
+                const isVideo = currentItem.type === 'Videó';
+                let timeoutId;
+        
+                const advance = () => {
+                    setIdx(c => (c + 1) % news.length);
+                };
+        
+                if (isVideo) {
+                    const videoElement = videoRef.current;
+                    
+                    const onMetadataLoaded = () => {
+                        const duration = Math.round(videoElement.duration * 1000);
+                        setDisplayDuration(duration > 0 ? duration : DEFAULT_DISPLAY_TIME);
+                        timeoutId = setTimeout(advance, duration > 0 ? duration : DEFAULT_DISPLAY_TIME);
+                    };
+        
+                    if (videoElement) {
+                        videoElement.addEventListener('loadedmetadata', onMetadataLoaded);
+                    }
+        
+                    // Clean up the event listener
+                    return () => {
+                        if (videoElement) {
+                            videoElement.removeEventListener('loadedmetadata', onMetadataLoaded);
+                        }
+                        clearTimeout(timeoutId);
+                    };
+                } else if (isTable) {
+                    const tableRows = currentItem.tableData ? currentItem.tableData.length : 0;
+                    // Estimate reading time: 2 seconds per row, min 10s, max 60s
+                    const readingTime = Math.max(10000, Math.min(60000, tableRows * 2000));
+                    setDisplayDuration(readingTime);
+                    timeoutId = setTimeout(advance, readingTime);
+                    
+                    // Clean up the timeout
+                    return () => {
+                        clearTimeout(timeoutId);
+                    };
+                }
+                else {
+                    const readingTime = (currentItem.type === 'Hír' || currentItem.type === 'FONTOS') && currentItem.body 
+                        ? Math.max(5000, Math.min(30000, (currentItem.body.length / 10) * 1000)) 
+                        : DEFAULT_DISPLAY_TIME;
+                    setDisplayDuration(readingTime);
+                    timeoutId = setTimeout(advance, readingTime);
+                    
+                    // Clean up the timeout
+                    return () => {
+                        clearTimeout(timeoutId);
+                    };
+                }
+            }, [news, idx]);
+
+            if(news.length === 0) return (
+                <div class="h-screen bg-black relative overflow-hidden">
+                  <div class="absolute -inset-[100px] opacity-50">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] animate-pulse"></div>
+                    <div class="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-[128px] animate-pulse"></div>
+                    <div class="absolute top-1/2 left-2/3 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-[128px] animate-pulse"></div>
+                  </div>
+                    <Clock />
+                    <div className="flex flex-col items-center justify-center h-full text-white">
+                        <h1 className="text-5xl font-bold mb-4 text-center" style={{textShadow: '0 0 10px rgba(0,0,0,0.7)'}}>SZISZI hírközlési rendszer</h1>
+                        <p className="text-2xl text-gray-300 pulse-text" style={{textShadow: '0 0 5px rgba(0,0,0,0.7)'}}>Várakozás tartalomra...</p>
+                    </div>
+                </div>
+            );
+
+            const item = news[idx];
+            if(!item) return null;
+
+            const isUrgent = item.type === 'FONTOS';
+            const isVideo = item.type === 'Videó';
+            const isTable = item.type === 'Táblázat'; // New: check for table type
+
+            return (
+                <div className="relative h-screen w-full bg-black">
+                    <Clock />
+
+                    {isVideo ? (
+                        <div key={item.id} className="absolute inset-0 fade-anim">
+                            <video 
+                                ref={videoRef}
+                                src={item.image} 
+                                className="absolute inset-0 w-full h-full object-cover" 
+                                autoPlay 
+                                muted 
+                                loop={false} // Should not loop if we want to advance after it ends
+                            />
+                            <div className="absolute inset-0 bg-black/30"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <h1 className="text-7xl font-extrabold text-white text-center drop-shadow-2xl" style={{textShadow: '0 0 20px rgba(0,0,0,0.8)'}}>
+                                    {item.headline}
+                                </h1>
+                            </div>
+                        </div>
+                    ) : isTable ? ( // New: table rendering
+                        <div key={item.id} className="absolute inset-0 fade-anim flex items-center justify-center p-8">
+                            <div className="max-w-7xl w-full mx-auto bg-gray-900/80 backdrop-blur-md rounded-lg shadow-2xl p-6 text-white overflow-hidden flex flex-col items-center">
+                                <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight text-center" style={{textShadow: '2px 2px 8px rgba(0,0,0,0.9)'}}>
+                                    {item.headline}
+                                </h1>
+                                {item.tableData && item.tableData.length > 0 ? (
+                                    <div className="overflow-x-auto w-full mt-4 max-h-[70vh]"> {/* max-h for vertical scroll if table is too long */}
+                                        <table className="min-w-full divide-y divide-gray-700">
+                                            <thead className="bg-gray-800 sticky top-0"> {/* Sticky header for long tables */}
+                                                <tr>
+                                                    {item.tableData[0].map((header, i) => (
+                                                        <th key={i} scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                                                            {header}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-gray-900 divide-y divide-gray-700">
+                                                {item.tableData.slice(1).map((row, rowIndex) => (
+                                                    <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-gray-800' : 'bg-gray-900'}> {/* Zebra stripes */}
+                                                        {row.map((cell, cellIndex) => (
+                                                            <td key={cellIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                                                                {cell}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-400 text-lg">Nincs megjeleníthető táblázat adat.</p>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <React.Fragment>
+                            {/* Background Image */}
+                            <div key={item.id} className="absolute inset-0 bg-cover bg-center fade-anim ken-burns"
+                                style={{ backgroundImage: `url(${item.image})` }}>
+                                <div className="absolute inset-0 bg-black/40"></div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                            </div>
+
+                            {/* Text Overlay */}
+                            <div className="absolute bottom-0 left-0 w-full p-16 z-10 fade-anim">
+                                <div className="max-w-7xl mx-auto">
+                                    {/* Label: Red or Blue */}
+                                    {item.type && item.type !== 'nothing' && (
+                                        <span className={`${isUrgent ? 'bg-red-600' : 'bg-blue-600'} text-white font-bold px-4 py-1 rounded mb-4 inline-block shadow-lg transition-colors duration-300`}>
+                                            {isUrgent ? 'FONTOS BEJELENTÉS' : 'HÍREK'}
+                                        </span>
+                                    )}
+                                    
+                                    <h1 className="text-6xl md:text-7xl font-extrabold text-white mb-6 leading-tight" style={{textShadow: '2px 2px 8px rgba(0,0,0,0.9)'}}>
+                                        {item.headline}
+                                    </h1>
+                                    
+                                    {/* Border Line: Red or Blue */}
+                                    <p className={`text-2xl md:text-3xl text-gray-100 font-medium max-w-5xl leading-relaxed drop-shadow-md border-l-4 ${isUrgent ? 'border-red-500' : 'border-blue-500'} pl-6 bg-black/50 p-4 rounded-r-lg backdrop-blur-md whitespace-pre-wrap break-words`} style={{textShadow: '1px 1px 4px rgba(0,0,0,0.7)'}}>
+                                        {item.body}
+                                    </p>
+                                </div>
+                            </div>
+                        </React.Fragment>
+                    )}
+
+                    {/* Infinite Progress Bar */}
+                    <div key={`p-${idx}`} 
+                         className={`absolute bottom-0 left-0 h-2 z-20 ${isUrgent ? 'bg-red-600' : isVideo ? 'bg-green-500' : isTable ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                         style={{ 
+                             animation: `loadBar ${displayDuration}ms linear forwards`
+                         }}>
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
