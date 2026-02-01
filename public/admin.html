@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hírek Adminisztráció</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>.force-hidden { display: none !important; }</style>
 </head>
@@ -44,10 +43,15 @@
                         <select id="type" onchange="handleTypeChange()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded text-gray-200">
                             <option value="nothing" style="color: gray;">Semmi</option>
                             <option value="Hír" style="color: #38bdf8;">Hír</option>
-                            <option value="FONTOS" style="color: #f472b6;">Fontos</option>
                             <option value="Videó" style="color: #a78bfa;">Videó</option>
                             <option value="Táblázat" style="color: #22c55e;">Táblázat</option>
                         </select>
+                        <div class="mt-3">
+                            <button type="button" id="importantBtn" onclick="toggleImportant()" class="px-3 py-2 text-sm font-bold rounded border border-amber-400/60 text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition">
+                                Fontos: KI
+                            </button>
+                            <span class="text-xs text-gray-400 ml-2">Kapcsold be, ha sürgős/kiemelt tartalom.</span>
+                        </div>
                     </div>
 
                     <div class="mb-4" id="headlineContainer" style="display: none;">
@@ -59,10 +63,10 @@
                     </div>
 
                     <div class="mb-4" id="bodyContainerWrapper" style="display: none;">
-                        <label class="block text-sm font-bold text-gray-400 mb-1">Tartalom (Max 500)</label>
+                        <label class="block text-sm font-bold text-gray-400 mb-1">Tartalom (Max 2000)</label>
                         <div class="relative">
-                            <textarea id="body" maxlength="500" oninput="updateCounts()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded h-32 text-gray-200 placeholder-gray-500"></textarea>
-                            <span id="bodyCount" class="absolute right-3 bottom-3 text-xs text-gray-500 font-mono bg-gray-800/80 p-1 rounded">0/500</span>
+                            <textarea id="body" maxlength="2000" oninput="updateCounts()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded h-32 text-gray-200 placeholder-gray-500"></textarea>
+                            <span id="bodyCount" class="absolute right-3 bottom-3 text-xs text-gray-500 font-mono bg-gray-800/80 p-1 rounded">0/2000</span>
                         </div>
                     </div>
                     
@@ -92,6 +96,7 @@
 
     <script>
         const DEFAULT_IMAGE = '/data/default.jpg'; 
+        let importantFlag = false; // Tracks if the current entry is marked important
 
         if(localStorage.getItem('tv_auth') === 'true') showDashboard();
 
@@ -105,6 +110,8 @@
             const mediaUploadContainer = document.getElementById('mediaUploadContainer'); 
 
             headlineInput.maxLength = 30; 
+            resetDocState();
+            setImportant(false);
 
             if (type === 'nothing') {
                 headlineContainer.style.display = 'none';
@@ -116,22 +123,21 @@
                 fileInput.value = ''; 
             } else {
                 headlineContainer.style.display = 'block';
-                mediaUploadContainer.style.display = 'block';
-
-                if (type === 'Videó' || type === 'Táblázat') {
+                if (type === 'Videó') {
+                    mediaUploadContainer.style.display = 'block';
                     bodyContainerWrapper.style.display = 'none';
-                    bodyInput.value = ''; 
+                    bodyInput.value = '';
+                    fileInput.accept = 'video/*';
+                } else if (type === 'Táblázat') {
+                    mediaUploadContainer.style.display = 'none';
+                    bodyContainerWrapper.style.display = 'none';
+                    bodyInput.value = '';
+                    fileInput.value = '';
                 } else {
+                    mediaUploadContainer.style.display = 'block';
                     bodyContainerWrapper.style.display = 'block';
+                    fileInput.accept = 'image/*';
                 }
-            }
-
-            if (type === 'Videó') {
-                fileInput.accept = 'video/*';
-            } else if (type === 'Táblázat') {
-                fileInput.accept = '.csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel';
-            } else { 
-                fileInput.accept = 'image/*';
             }
             updateCounts();
         }
@@ -142,7 +148,29 @@
             const hMax = headline.maxLength;
             const b = document.getElementById('body').value.length;
             document.getElementById('headCount').innerText = `${h}/${hMax}`;
-            document.getElementById('bodyCount').innerText = b + "/500";
+            const bMax = document.getElementById('body').maxLength || 2000;
+            document.getElementById('bodyCount').innerText = `${b}/${bMax}`;
+        }
+
+        function setImportant(val) {
+            importantFlag = !!val;
+            const btn = document.getElementById('importantBtn');
+            if (!btn) return;
+            if (importantFlag) {
+                btn.innerText = 'Fontos: BE';
+                btn.classList.add('bg-amber-500/30', 'text-amber-50', 'border-amber-300');
+            } else {
+                btn.innerText = 'Fontos: KI';
+                btn.classList.remove('bg-amber-500/30', 'text-amber-50', 'border-amber-300');
+            }
+        }
+
+        function toggleImportant() {
+            setImportant(!importantFlag);
+        }
+
+        function resetDocState() {
+            // Document upload removed
         }
 
         async function handleLogin() {
@@ -189,12 +217,15 @@
                 list.innerHTML = data.map((item) => {
                     const isVideo = item.type === 'Videó';
                     const isTable = item.type === 'Táblázat';
+                    const isImportant = item.important || item.type === 'FONTOS';
 
                     let typeLabel = '';
                     if (item.type === 'Hír') typeLabel = `<span class="text-xs font-bold text-cyan-400">${item.type}</span>`;
-                    else if (item.type === 'FONTOS') typeLabel = `<span class="text-xs font-bold text-pink-400">${item.type}</span>`;
                     else if (item.type === 'Videó') typeLabel = `<span class="text-xs font-bold text-purple-400">${item.type}</span>`;
                     else if (item.type === 'Táblázat') typeLabel = `<span class="text-xs font-bold text-green-400">${item.type}</span>`;
+                    else if (item.type === 'FONTOS') typeLabel = `<span class="text-xs font-bold text-pink-300">FONTOS</span>`;
+
+                    const importantBadge = isImportant ? `<span class="text-xs font-bold text-pink-300 ml-2">FONTOS</span>` : '';
                     
                     let mainContent = '';
                     let mediaSection = ''; 
@@ -223,7 +254,7 @@
                                 </div>
                             `;
                         } else {
-                            mainContent = '<p class="text-gray-500">Nincs megjeleníthető táblázat adat.</p>';
+                            mainContent = `<p class="text-gray-500">Nincs megjeleníthető táblázat adat.</p>`;
                         }
                     } else { 
                         const bodyContent = isVideo ? '<i class="text-gray-500">Nincs leírás</i>' : item.body;
@@ -241,7 +272,7 @@
                             ${mediaSection}
                             <div class="flex-1">
                                 <h4 class="font-bold text-xl text-gray-200 mb-1">${item.headline}</h4>
-                                ${typeLabel}
+                                ${typeLabel} ${importantBadge}
                                 ${mainContent}
                             </div>
                             <div class="flex items-center justify-center sm:justify-end">
@@ -264,6 +295,7 @@
 
             const isVideo = t === 'Videó';
             const isTable = t === 'Táblázat';
+            const bodyMax = document.getElementById('body').maxLength || 2000;
 
             // New validation: Type must be selected
             if (t === 'nothing') {
@@ -282,21 +314,15 @@
             if (!isVideo && !isTable && !b) {
                 return Swal.fire({ icon: 'info', title: 'Információ', text: 'A tartalom megadása kötelező!' });
             }
-            if (!isVideo && !isTable && b.length > 500) { // Max 500 for non-video/table body
-                return Swal.fire({ icon: 'info', title: 'Információ', text: 'A tartalom maximum 500 karakter lehet!' });
+            if (!isVideo && !isTable && b.length > bodyMax) {
+                return Swal.fire({ icon: 'info', title: 'Információ', text: `A tartalom maximum ${bodyMax} karakter lehet!` });
             }
 
             // File upload validation
-            if (isVideo) {
-                if (!f) {
-                    return Swal.fire({ icon: 'info', title: 'Információ', text: 'Videó közzétételéhez fájl megadása kötelező!' });
-                }
-            } else if (isTable) {
-                if (!f) {
-                    return Swal.fire({ icon: 'info', title: 'Információ', text: 'Táblázat közzétételéhez fájl megadása kötelező!' });
-                }
+            if (isVideo && !f) {
+                return Swal.fire({ icon: 'info', title: 'Információ', text: 'Videó közzétételéhez fájl megadása kötelező!' });
             }
-            // For image types (Hír, FONTOS, nothing), file is optional, so no !f check here.
+
             // --- End Validation ---
             btn.innerText = "FELDOLGOZÁS...";
             btn.disabled = true;
@@ -304,65 +330,37 @@
 
             try {
                 let finalMediaUrl = DEFAULT_IMAGE;
-                let tableDataContent = null;
 
-                if (f) { // File is selected
-                    if (isTable) {
-                        const reader = new FileReader();
-                        // This part needs to be synchronous for publishNews to continue, or publishNews
-                        // itself needs to be split. Given the current structure, I'll pass control
-                        // to an async handler for table parsing and then publish.
-                        reader.onload = async (e) => {
-                            try {
-                                const data = new Uint8Array(e.target.result);
-                                const workbook = XLSX.read(data, { type: 'array' });
-                                const firstSheetName = workbook.SheetNames[0];
-                                const worksheet = workbook.Sheets[firstSheetName];
-                                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }); 
-                                await publishParsedTable(h, t, json); // New function to publish table
-                            } catch (error) {
-                                Swal.fire({ icon: 'error', title: 'Hiba', text: "Hiba az Excel/CSV fájl feldolgozása során: " + error.message });
-                                console.error(error);
-                            } finally {
-                                btn.innerText = "KÖZZÉTÉTEL";
-                                btn.disabled = false;
-                                btn.classList.remove("opacity-50");
-                            }
-                        };
-                        reader.onerror = (error) => {
-                            Swal.fire({ icon: 'error', title: 'Hiba', text: "Hiba a fájl olvasása során: " + error });
-                            console.error("FileReader error:", error);
-                            btn.innerText = "KÖZZÉTÉTEL";
-                            btn.disabled = false;
-                            btn.classList.remove("opacity-50");
-                        };
-                        reader.readAsArrayBuffer(f);
-                        return; // Exit publishNews, parsing and publishing will continue in reader.onload
-                    } else { // It's an image or video file
-                        const fd = new FormData();
-                        const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image';
-                        const fieldName = isVideo ? 'video' : 'image';
-                        fd.append(fieldName, f);
-                        
-                        const upRes = await fetch(uploadUrl, { method: 'POST', body: fd });
-                        const upData = await upRes.json();
-                        if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
-                        finalMediaUrl = upData.url;
-                    }
+                // Upload media (image/video) when applicable
+                if (f && !isTable) {
+                    const fd = new FormData();
+                    const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image';
+                    const fieldName = isVideo ? 'video' : 'image';
+                    fd.append(fieldName, f);
+                    
+                    const upRes = await fetch(uploadUrl, { method: 'POST', body: fd });
+                    const upData = await upRes.json();
+                    if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
+                    finalMediaUrl = upData.url;
                 }
 
-                // If it's a table, this part is skipped because of the `return` above.
-                // This block is for image, video, and text-only news.
                 const listRes = await fetch('/api/news');
                 const list = await listRes.json();
-                
-                list.unshift({ 
+
+                const newItem = { 
                     id: Date.now(), 
                     headline: h, 
-                    body: (isTable || isVideo) ? '' : b, // Body is empty for videos
-                    image: finalMediaUrl,
-                    type: t
-                });
+                    body: (isTable || isVideo) ? '' : b, 
+                    image: isTable ? '' : finalMediaUrl,
+                    type: t,
+                    important: importantFlag
+                };
+
+                if (isTable) {
+                    newItem.tableData = [];
+                }
+
+                list.unshift(newItem);
 
                 const saveRes = await fetch('/api/news', {
                     method: 'POST',
@@ -378,58 +376,12 @@
                 document.getElementById('headline').value = '';
                 document.getElementById('body').value = '';
                 document.getElementById('fileInput').value = '';
+                resetDocState();
+                setImportant(false);
                 handleTypeChange();
                 updateCounts();
                 loadNews();
                 Swal.fire({ icon: 'success', title: 'Sikeres', text: 'Sikeres közzététel!' });
-            } finally {
-                // This finally block will execute for image/video/text, not for tables
-                // as table publishing is handled by publishParsedTable
-                if (!isTable) { // Only reset if not a table (which uses publishParsedTable)
-                    btn.innerText = "KÖZZÉTÉTEL";
-                    btn.disabled = false;
-                    btn.classList.remove("opacity-50");
-                }
-            }
-        }
-
-        // Renaming publishTableNews to publishParsedTable for clarity and calling it after parsing
-        async function publishParsedTable(headline, type, tableData) {
-            const btn = document.getElementById('pubBtn');
-            try {
-                const listRes = await fetch('/api/news');
-                const list = await listRes.json();
-                
-                list.unshift({ 
-                    id: Date.now(), 
-                    headline: headline, 
-                    body: '', 
-                    image: '', 
-                    type: type,
-                    tableData: tableData 
-                });
-
-                const saveRes = await fetch('/api/news', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(list)
-                });
-                
-                if(!saveRes.ok) {
-                    const errData = await saveRes.json();
-                    throw new Error(errData.error || "Mentés sikertelen");
-                }
-
-                document.getElementById('headline').value = '';
-                document.getElementById('body').value = '';
-                document.getElementById('fileInput').value = '';
-                handleTypeChange();
-                updateCounts();
-                loadNews();
-                Swal.fire({ icon: 'success', title: 'Sikeres', text: 'Sikeres közzététel!' });
-
-            } catch (err) {
-                Swal.fire({ icon: 'error', title: 'Hiba', text: "Hiba: " + err.message });
             } finally {
                 btn.innerText = "KÖZZÉTÉTEL";
                 btn.disabled = false;

@@ -4,7 +4,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
-
 // --- SAFETY NET (Prevents Restart Loops) ---
 process.on('uncaughtException', (err) => {
     console.error('CRITICAL ERROR:', err);
@@ -32,6 +31,7 @@ const VIDEO_UPLOAD_DIR = path.resolve(__dirname, 'public/uploads/videos');
 const NEWS_FILE = path.join(DATA_DIR, 'news.json');
 const SEED_DEFAULT_IMAGE = path.resolve(__dirname, 'data/default.jpg');
 const PUBLIC_DEFAULT_IMAGE = path.join(DATA_DIR, 'default.jpg');
+const MAX_BODY_LENGTH = 2000;
 
 // Ensure directories exist
 [DATA_DIR, IMAGE_UPLOAD_DIR, VIDEO_UPLOAD_DIR].forEach(dir => {
@@ -101,8 +101,8 @@ app.post('/api/news', (req, res) => {
                 if (item.headline && item.headline.length > 30) {
                     return res.status(400).json({ error: "A címsor maximum 30 karakter lehet." });
                 }
-                if (item.body && item.body.length > 500) {
-                    return res.status(400).json({ error: "A tartalom maximum 500 karakter lehet." });
+                if (item.body && item.body.length > MAX_BODY_LENGTH) {
+                    return res.status(400).json({ error: `A tartalom maximum ${MAX_BODY_LENGTH} karakter lehet.` });
                 }
             }
         }

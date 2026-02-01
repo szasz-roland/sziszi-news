@@ -161,6 +161,7 @@
         
                 const currentItem = news[idx];
                 const isVideo = currentItem.type === 'Videó';
+                const isImportant = currentItem.important || currentItem.type === 'FONTOS';
                 let timeoutId;
         
                 const advance = () => {
@@ -200,7 +201,7 @@
                     };
                 }
                 else {
-                    const readingTime = (currentItem.type === 'Hír' || currentItem.type === 'FONTOS') && currentItem.body 
+                    const readingTime = (currentItem.type === 'Hír' || isImportant) && currentItem.body 
                         ? Math.max(5000, Math.min(30000, (currentItem.body.length / 10) * 1000)) 
                         : DEFAULT_DISPLAY_TIME;
                     setDisplayDuration(readingTime);
@@ -231,7 +232,7 @@
             const item = news[idx];
             if(!item) return null;
 
-            const isUrgent = item.type === 'FONTOS';
+            const isUrgent = item.important || item.type === 'FONTOS';
             const isVideo = item.type === 'Videó';
             const isTable = item.type === 'Táblázat'; // New: check for table type
 
@@ -255,10 +256,20 @@
                                     {item.headline}
                                 </h1>
                             </div>
+                            {isUrgent && (
+                                <div className="absolute top-4 left-4 bg-red-600 text-white font-bold px-4 py-2 rounded shadow-lg">
+                                    FONTOS
+                                </div>
+                            )}
                         </div>
                     ) : isTable ? ( // New: table rendering
                         <div key={item.id} className="absolute inset-0 fade-anim flex items-center justify-center p-8">
                             <div className="max-w-7xl w-full mx-auto bg-gray-900/80 backdrop-blur-md rounded-lg shadow-2xl p-6 text-white overflow-hidden flex flex-col items-center">
+                                {isUrgent && (
+                                    <div className="w-full flex justify-start mb-3">
+                                        <span className="bg-red-600 text-white font-bold px-4 py-2 rounded shadow">FONTOS</span>
+                                    </div>
+                                )}
                                 <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight text-center" style={{textShadow: '2px 2px 8px rgba(0,0,0,0.9)'}}>
                                     {item.headline}
                                 </h1>
@@ -295,7 +306,7 @@
                     ) : (
                         <React.Fragment>
                             {/* Background Image */}
-                            <div key={item.id} className="absolute inset-0 bg-cover bg-center fade-anim ken-burns"
+                            <div key={item.id} className="absolute inset-0 bg-cover bg-center fade-anim"
                                 style={{ backgroundImage: `url(${item.image})` }}>
                                 <div className="absolute inset-0 bg-black/40"></div>
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
