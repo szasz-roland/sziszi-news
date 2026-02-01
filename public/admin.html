@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hírek Adminisztráció</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>.force-hidden { display: none !important; }</style>
 </head>
@@ -43,6 +44,7 @@
                         <select id="type" onchange="handleTypeChange()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded text-gray-200">
                             <option value="nothing" style="color: gray;">Semmi</option>
                             <option value="Hír" style="color: #38bdf8;">Hír</option>
+                            <option value="Kép" style="color: #fbbf24;">Kép</option>
                             <option value="Videó" style="color: #a78bfa;">Videó</option>
                             <option value="Táblázat" style="color: #22c55e;">Táblázat</option>
                         </select>
@@ -75,6 +77,12 @@
                         <input type="file" id="fileInput" accept="image/*,video/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-purple-600 file:text-white hover:file:bg-purple-700">
                     </div>
 
+                    <div class="mb-6 bg-gray-800/80 backdrop-blur-sm p-4 rounded border-dashed border-2 border-gray-700" id="docUploadContainer" style="display: none;">
+                        <label class="block text-sm font-bold text-gray-200 mb-2">Dokumentum feltöltése (PDF, DOCX, XLSX, CSV, TXT)</label>
+                        <input type="file" id="docInput" accept=".pdf,.docx,.xlsx,.csv,.txt" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-cyan-600 file:text-white hover:file:bg-cyan-700" onchange="handleDocumentUpload()">
+                        <p id="docStatus" class="text-xs text-gray-400 mt-2"></p>
+                    </div>
+
                     <button id="pubBtn" onclick="publishNews()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 rounded shadow text-lg transition-all">
                         KÖZZÉTÉTEL
                     </button>
@@ -96,9 +104,21 @@
 
     <script>
         const DEFAULT_IMAGE = '/data/default.jpg'; 
+        let lastDocResult = null; // Stores the latest processed document (text/table + url)
         let importantFlag = false; // Tracks if the current entry is marked important
 
         if(localStorage.getItem('tv_auth') === 'true') showDashboard();
+
+        // Remove legacy warning text about only 12 rows being visible in table mode
+        (() => {
+            const extraNotes = document.querySelectorAll('#docUploadContainer p');
+            extraNotes.forEach((el) => {
+                const text = (el.innerText || '').toLowerCase();
+                if (text.includes('12 sor') && text.includes('látszik')) {
+                    el.remove();
+                }
+            });
+        })();
 
         function handleTypeChange() {
             const type = document.getElementById('type').value;
@@ -108,6 +128,8 @@
             const bodyContainerWrapper = document.getElementById('bodyContainerWrapper'); 
             const fileInput = document.getElementById('fileInput');
             const mediaUploadContainer = document.getElementById('mediaUploadContainer'); 
+            const docUploadContainer = document.getElementById('docUploadContainer');
+            const docInput = document.getElementById('docInput');
 
             headlineInput.maxLength = 30; 
             resetDocState();
@@ -117,26 +139,43 @@
                 headlineContainer.style.display = 'none';
                 bodyContainerWrapper.style.display = 'none';
                 mediaUploadContainer.style.display = 'none';
+                docUploadContainer.style.display = 'none';
                 
                 headlineInput.value = '';
                 bodyInput.value = ''; 
                 fileInput.value = ''; 
+                docInput.value = '';
             } else {
                 headlineContainer.style.display = 'block';
                 if (type === 'Videó') {
                     mediaUploadContainer.style.display = 'block';
+                    docUploadContainer.style.display = 'none';
                     bodyContainerWrapper.style.display = 'none';
                     bodyInput.value = '';
                     fileInput.accept = 'video/*';
+                    fileInput.multiple = false;
+                } else if (type === 'Kép') {
+                    mediaUploadContainer.style.display = 'block';
+                    docUploadContainer.style.display = 'none';
+                    bodyContainerWrapper.style.display = 'none';
+                    bodyInput.value = '';
+                    fileInput.accept = 'image/*';
+                    fileInput.multiple = true; // allow multiple images for gallery
                 } else if (type === 'Táblázat') {
                     mediaUploadContainer.style.display = 'none';
+                    docUploadContainer.style.display = 'block';
                     bodyContainerWrapper.style.display = 'none';
                     bodyInput.value = '';
                     fileInput.value = '';
+                    docInput.accept = '.pdf,.docx,.xlsx,.csv,.txt';
+                    fileInput.multiple = false;
                 } else {
                     mediaUploadContainer.style.display = 'block';
+                    docUploadContainer.style.display = 'block';
                     bodyContainerWrapper.style.display = 'block';
                     fileInput.accept = 'image/*';
+                    fileInput.multiple = false;
+                    docInput.accept = '.pdf,.docx,.xlsx,.csv,.txt';
                 }
             }
             updateCounts();
@@ -170,7 +209,57 @@
         }
 
         function resetDocState() {
-            // Document upload removed
+            lastDocResult = null;
+            const docStatus = document.getElementById('docStatus');
+            if (docStatus) docStatus.innerText = '';
+            const docInput = document.getElementById('docInput');
+            if (docInput) docInput.value = '';
+        }
+
+        async function handleDocumentUpload() {
+            const docInput = document.getElementById('docInput');
+            const docStatus = document.getElementById('docStatus');
+            const type = document.getElementById('type').value;
+            lastDocResult = null;
+            if (!docInput || !docInput.files || docInput.files.length === 0) {
+                if (docStatus) docStatus.innerText = '';
+                return;
+            }
+
+            const file = docInput.files[0];
+            if (docStatus) docStatus.innerText = 'Feldolgozás folyamatban...';
+
+            try {
+                const fd = new FormData();
+                fd.append('document', file);
+                const res = await fetch('/api/upload/document', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Feldolgozási hiba');
+
+                lastDocResult = data;
+
+                if (type === 'Táblázat') {
+                    if (data.tableData && data.tableData.length > 0) {
+                        docStatus.innerText = 'Táblázatos adat beolvasva.';
+                    } else if (data.text) {
+                        // Fallback: turn lines into a single-column table
+                        const rows = data.text.split(/\r?\n/).filter(Boolean).map(line => [line]);
+                        lastDocResult.tableData = [['Tartalom'], ...rows];
+                        docStatus.innerText = 'Szöveges dokumentum táblázatként mentve.';
+                    } else {
+                        throw new Error('Nem sikerült táblázatot kinyerni a dokumentumból.');
+                    }
+                } else {
+                    if (data.text) {
+                        document.getElementById('body').value = data.text;
+                        updateCounts();
+                    }
+                    docStatus.innerText = 'Dokumentum szövege hozzáadva a tartalomhoz.';
+                }
+            } catch (err) {
+                lastDocResult = null;
+                if (docStatus) docStatus.innerText = 'Hiba: ' + err.message;
+            }
         }
 
         async function handleLogin() {
@@ -216,11 +305,14 @@
 
                 list.innerHTML = data.map((item) => {
                     const isVideo = item.type === 'Videó';
+                    const isImageOnly = item.type === 'Kép';
                     const isTable = item.type === 'Táblázat';
                     const isImportant = item.important || item.type === 'FONTOS';
+                    const attachmentLink = item.attachment ? `<a href="${item.attachment}" target="_blank" class="text-sm text-purple-300 underline block mt-2">Csatolt dokumentum megnyitása</a>` : '';
 
                     let typeLabel = '';
                     if (item.type === 'Hír') typeLabel = `<span class="text-xs font-bold text-cyan-400">${item.type}</span>`;
+                    else if (item.type === 'Kép') typeLabel = `<span class="text-xs font-bold text-amber-300">${item.type}</span>`;
                     else if (item.type === 'Videó') typeLabel = `<span class="text-xs font-bold text-purple-400">${item.type}</span>`;
                     else if (item.type === 'Táblázat') typeLabel = `<span class="text-xs font-bold text-green-400">${item.type}</span>`;
                     else if (item.type === 'FONTOS') typeLabel = `<span class="text-xs font-bold text-pink-300">FONTOS</span>`;
@@ -252,18 +344,24 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                ${attachmentLink}
                             `;
                         } else {
-                            mainContent = `<p class="text-gray-500">Nincs megjeleníthető táblázat adat.</p>`;
+                            mainContent = `<p class="text-gray-500">Nincs megjeleníthető táblázat adat.</p>${attachmentLink}`;
                         }
                     } else { 
-                        const bodyContent = isVideo ? '<i class="text-gray-500">Nincs leírás</i>' : item.body;
+                        const bodyContent = (isVideo || isImageOnly) ? '<i class="text-gray-500">Nincs leírás</i>' : item.body;
+                        const thumb = isImageOnly && item.images && item.images.length > 0 ? item.images[0] : item.image;
                         mediaSection = isVideo ? 
                             `<video src="${item.image}" class="w-full sm:w-48 h-32 object-cover rounded bg-gray-800 border border-gray-700" muted loop></video>` :
-                            `<img src="${item.image}" class="w-full sm:w-48 h-32 object-cover rounded bg-gray-800 border border-gray-700">`;
+                            `<div class="relative w-full sm:w-48 h-32 rounded bg-gray-800 border border-gray-700 overflow-hidden">
+                                <img src="${thumb}" class="w-full h-full object-cover">
+                                ${isImageOnly && item.images && item.images.length > 1 ? `<span class="absolute bottom-1 right-1 bg-black/70 text-xs text-white px-2 py-0.5 rounded">${item.images.length} kép</span>` : ''}
+                            </div>`;
                         
                         mainContent = `
                             <p class="text-gray-400 text-sm whitespace-pre-wrap line-clamp-3 break-words">${bodyContent}</p>
+                            ${attachmentLink}
                         `;
                     }
 
@@ -291,11 +389,21 @@
             const b = document.getElementById('body').value;
             const t = document.getElementById('type').value;
             const f = document.getElementById('fileInput').files[0];
+            const docFile = document.getElementById('docInput').files[0];
             const btn = document.getElementById('pubBtn');
 
             const isVideo = t === 'Videó';
+            const isImageOnly = t === 'Kép';
             const isTable = t === 'Táblázat';
             const bodyMax = document.getElementById('body').maxLength || 2000;
+
+            // If a document is selected but not yet processed, process it now
+            if (docFile && !lastDocResult) {
+                await handleDocumentUpload();
+            }
+
+            const hasDocText = lastDocResult && lastDocResult.text;
+            const hasDocTable = lastDocResult && lastDocResult.tableData && lastDocResult.tableData.length > 0;
 
             // New validation: Type must be selected
             if (t === 'nothing') {
@@ -310,11 +418,11 @@
                 return Swal.fire({ icon: 'info', title: 'Információ', text: 'A címsor maximum 30 karakter lehet!' });
             }
 
-            // Body content validation (mandatory for all except Videó and Táblázat)
-            if (!isVideo && !isTable && !b) {
-                return Swal.fire({ icon: 'info', title: 'Információ', text: 'A tartalom megadása kötelező!' });
+            // Body content validation (mandatory for all except Videó, Kép és Táblázat, unless a document provided text)
+            if (!isVideo && !isImageOnly && !isTable && !b && !hasDocText) {
+                return Swal.fire({ icon: 'info', title: 'Információ', text: 'A tartalom vagy egy dokumentum szövege kötelező!' });
             }
-            if (!isVideo && !isTable && b.length > bodyMax) {
+            if (!isVideo && !isImageOnly && !isTable && b.length > bodyMax) {
                 return Swal.fire({ icon: 'info', title: 'Információ', text: `A tartalom maximum ${bodyMax} karakter lehet!` });
             }
 
@@ -323,6 +431,13 @@
                 return Swal.fire({ icon: 'info', title: 'Információ', text: 'Videó közzétételéhez fájl megadása kötelező!' });
             }
 
+            if (isImageOnly && !f) {
+                return Swal.fire({ icon: 'info', title: 'Információ', text: 'Kép közzétételéhez legalább egy kép fájl megadása kötelező!' });
+            }
+
+            if (isTable && !hasDocTable) {
+                return Swal.fire({ icon: 'info', title: 'Információ', text: 'Táblázat típushoz töltsön fel PDF/DOCX/XLSX/CSV/TXT fájlt!' });
+            }
             // --- End Validation ---
             btn.innerText = "FELDOLGOZÁS...";
             btn.disabled = true;
@@ -332,16 +447,31 @@
                 let finalMediaUrl = DEFAULT_IMAGE;
 
                 // Upload media (image/video) when applicable
+                let galleryUrls = [];
                 if (f && !isTable) {
-                    const fd = new FormData();
-                    const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image';
-                    const fieldName = isVideo ? 'video' : 'image';
-                    fd.append(fieldName, f);
-                    
-                    const upRes = await fetch(uploadUrl, { method: 'POST', body: fd });
-                    const upData = await upRes.json();
-                    if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
-                    finalMediaUrl = upData.url;
+                    if (isImageOnly && document.getElementById('fileInput').files.length > 1) {
+                        const files = Array.from(document.getElementById('fileInput').files);
+                        for (const imgFile of files) {
+                            const fd = new FormData();
+                            fd.append('image', imgFile);
+                            const upRes = await fetch('/api/upload/image', { method: 'POST', body: fd });
+                            const upData = await upRes.json();
+                            if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
+                            galleryUrls.push(upData.url);
+                        }
+                        finalMediaUrl = galleryUrls[0];
+                    } else {
+                        const fd = new FormData();
+                        const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image';
+                        const fieldName = isVideo ? 'video' : 'image';
+                        fd.append(fieldName, f);
+                        
+                        const upRes = await fetch(uploadUrl, { method: 'POST', body: fd });
+                        const upData = await upRes.json();
+                        if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
+                        finalMediaUrl = upData.url;
+                        galleryUrls = [upData.url];
+                    }
                 }
 
                 const listRes = await fetch('/api/news');
@@ -350,14 +480,22 @@
                 const newItem = { 
                     id: Date.now(), 
                     headline: h, 
-                    body: (isTable || isVideo) ? '' : b, 
+                    body: (isTable || isVideo || isImageOnly) ? '' : (b || (hasDocText ? lastDocResult.text : '')), 
                     image: isTable ? '' : finalMediaUrl,
                     type: t,
                     important: importantFlag
                 };
 
                 if (isTable) {
-                    newItem.tableData = [];
+                    newItem.tableData = hasDocTable ? lastDocResult.tableData : [];
+                }
+
+                if (isImageOnly) {
+                    newItem.images = galleryUrls.length > 0 ? galleryUrls : (finalMediaUrl ? [finalMediaUrl] : []);
+                }
+
+                if (lastDocResult && lastDocResult.url) {
+                    newItem.attachment = lastDocResult.url;
                 }
 
                 list.unshift(newItem);
