@@ -7,95 +7,317 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>.force-hidden { display: none !important; }</style>
+    <style>
+        :root {
+            --bg-dark: #1c1f26;
+            --panel-dark: #20242c;
+            --panel-2-dark: #1f232c;
+            --border-dark: #2b303b;
+            --text-dark: #e5e7eb;
+
+            --bg-light: #edf1f7;
+            --panel-light: #f6f8fb;
+            --panel-2-light: #e7ebf3;
+            --border-light: #d6dae3;
+            --text-light: #0f172a;
+
+            --bg: var(--bg-dark);
+            --panel: var(--panel-dark);
+            --panel-2: var(--panel-2-dark);
+            --border: var(--border-dark);
+            --text: var(--text-dark);
+
+            --accent-red: #e54d42;
+            --accent-orange: #f0ae3e;
+            --accent-blue: #3fa0dc;
+            --accent-green: #5fb762;
+        }
+        .panel-1 { background: var(--panel); border: 1px solid var(--border); }
+        :root[data-theme="light"] {
+            --bg: var(--bg-light);
+            --panel: var(--panel-light);
+            --panel-2: var(--panel-2-light);
+            --border: var(--border-light);
+            --text: var(--text-light);
+        }
+        :root[data-theme="light"] .text-white,
+        :root[data-theme="light"] .text-slate-100,
+        :root[data-theme="light"] .text-slate-200,
+        :root[data-theme="light"] .text-slate-300,
+        :root[data-theme="light"] .text-gray-200,
+        :root[data-theme="light"] .text-gray-300 { color: #0f172a !important; }
+        :root[data-theme="light"] .text-gray-400,
+        :root[data-theme="light"] .text-slate-400 { color: #475569 !important; }
+        :root[data-theme="light"] .text-slate-500,
+        :root[data-theme="light"] .text-gray-500 { color: #334155 !important; }
+        :root[data-theme="light"] input,
+        :root[data-theme="light"] select,
+        :root[data-theme="light"] textarea { color: #0f172a !important; background-color: var(--panel-2) !important; }
+        :root[data-theme="light"] input::placeholder,
+        :root[data-theme="light"] textarea::placeholder { color: #64748b !important; }
+        :root[data-theme="light"] .panel,
+        :root[data-theme="light"] .panel-2 { color: #0f172a !important; }
+        :root[data-theme="light"] .text-white button,
+        :root[data-theme="light"] button.text-white { color: #0f172a !important; }
+        :root[data-theme="light"] .panel { background: #f8fafc !important; border-color: #cbd5e1 !important; }
+        :root[data-theme="light"] .panel-2 { background: #eef2f7 !important; border-color: #cbd5e1 !important; }
+        :root[data-theme="light"] .panel-1 { background: #f8fafc !important; border-color: #cbd5e1 !important; }
+        :root[data-theme="light"] .tab-active { border-color: #0ea5e9 !important; box-shadow: 0 0 0 1px #0ea5e9 inset; color: #0f172a !important; }
+        :root[data-theme="light"] .grid-bg { opacity: 0.1; }
+        .force-hidden { display: none !important; }
+        .grid-bg {
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        body.square-all * { border-radius: 0 !important; }
+        .panel { background: var(--panel) !important; border: 1px solid var(--border) !important; box-shadow: none !important; }
+        .panel-2 { background: var(--panel-2) !important; border: 1px solid var(--border) !important; }
+        .tab-active { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 1px var(--accent-blue) inset; color: var(--text) !important; }
+    </style>
 </head>
-<body class="font-sans bg-black">
-    <div class="fixed top-0 left-0 w-full h-full -z-10">
-        <div class="absolute -inset-[100px] opacity-50">
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] animate-pulse"></div>
-            <div class="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-[128px] animate-pulse"></div>
-            <div class="absolute top-1/2 left-2/3 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-[128px] animate-pulse"></div>
-        </div>
-    </div>
+    <body class="font-sans bg-[var(--bg)] text-[var(--text)] square-all" data-theme="dark">
+        <div class="fixed inset-0 -z-10 grid-bg opacity-25"></div>
 
-    <div class="relative min-h-screen flex flex-col items-center justify-center text-gray-200">
-        <div id="loginPanel" class="bg-gray-900/80 backdrop-blur-sm text-gray-200 p-8 rounded-xl shadow-2xl w-full max-w-sm">
-            <h2 class="text-3xl font-extrabold text-center mb-6">TV Adminisztráció</h2>
-            <input type="text" id="username" placeholder="Felhasználónév" class="w-full bg-gray-800 border border-gray-700 p-3 rounded mb-3 text-gray-200 placeholder-gray-500">
-            <input type="password" id="password" placeholder="Jelszó" class="w-full bg-gray-800 border border-gray-700 p-3 rounded mb-6 text-gray-200 placeholder-gray-500" onkeypress="if(event.key === 'Enter') handleLogin()">
-            <button onclick="handleLogin()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded">BEJELENTKEZÉS</button>
-            <p id="loginError" class="text-red-500 text-center mt-4 hidden font-bold"></p>
-        </div>
+        <div class="min-h-screen">
+            <div id="loginPanel" class="min-h-screen flex items-center justify-center px-4">
+                <div class="w-full max-w-md panel shadow-2xl p-8 backdrop-blur">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.35em] text-red-400">Sziszi TV</p>
+                            <h2 class="text-3xl font-black text-white">Admin Login</h2>
+                        </div>
+                        <span class="w-10 h-10 bg-red-500/15 border border-red-500/40 flex items-center justify-center text-red-300 font-bold">TV</span>
+                    </div>
+                    <div class="space-y-3">
+                        <input type="text" id="username" placeholder="Felhasználónév" class="w-full bg-[var(--panel-2)] border border-[var(--border)] p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]">
+                        <input type="password" id="password" placeholder="Jelszó" class="w-full bg-[var(--panel-2)] border border-[var(--border)] p-3 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]" onkeypress="if(event.key === 'Enter') handleLogin()">
+                        <button onclick="handleLogin()" class="w-full bg-[var(--accent-blue)] hover:bg-[#2f8cc4] text-white font-bold py-3 shadow transition">Bejelentkezés</button>
+                    </div>
+                    <p id="loginError" class="text-red-400 text-center mt-4 hidden font-bold"></p>
+                </div>
+            </div>
 
-        <div id="dashboardPanel" class="force-hidden w-full h-screen bg-transparent overflow-y-auto text-gray-200">
-            <div class="max-w-6xl mx-auto p-4 md:p-8">
-                <div class="flex justify-between items-center mb-8 bg-gray-900/80 backdrop-blur-sm p-4 rounded shadow sticky top-4 z-10 border border-purple-500/50">
-                    <h1 class="text-2xl font-bold text-gray-200">📺 Kezelőpult</h1>
+            <div id="dashboardPanel" class="force-hidden min-h-screen flex flex-col md:flex-row">
+                <aside class="w-full md:w-64 panel flex flex-row md:flex-col p-4 md:p-6 gap-3 md:gap-6 backdrop-blur md:fixed md:inset-y-0 md:left-0 md:overflow-y-auto md:h-screen md:border-r md:border-[var(--border)]">
                     <div>
-                        <button onclick="logout()" class="text-pink-400 font-bold border border-pink-400/50 px-4 py-2 rounded hover:bg-pink-400/10">Kijelentkezés</button>
+                        <p class="text-xs uppercase tracking-[0.35em] text-[var(--accent-blue)]">Sziszi TV</p>
+                        <h1 class="text-2xl font-black text-white">Kezelőpult</h1>
                     </div>
-                </div>
+                    <div class="flex md:flex-col gap-2 flex-1 md:flex-none">
+                        <button onclick="showSection('news')" id="tabNews" class="flex-1 flex items-center justify-between px-4 py-3 border border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--accent-blue)] hover:bg-[#222836] transition font-semibold text-left">Hírek <span class="text-[var(--accent-blue)]">•</span></button>
+                        <button onclick="showSection('settings')" id="tabSettings" class="flex-1 flex items-center justify-between px-4 py-3 border border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--accent-blue)] hover:bg-[#222836] transition font-semibold text-left">Beállítások <span class="text-[var(--accent-blue)]">•</span></button>
+                        <button onclick="showSection('audit')" id="tabAudit" class="flex-1 flex items-center justify-between px-4 py-3 border border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--accent-blue)] hover:bg-[#222836] transition font-semibold text-left">Napló <span class="text-[var(--accent-blue)]">•</span></button>
+                        <button onclick="showSection('users')" id="tabUsers" class="flex-1 flex items-center justify-between px-4 py-3 border border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--accent-blue)] hover:bg-[#222836] transition font-semibold text-left">Felhasználók <span class="text-[var(--accent-blue)]">•</span></button>
+                    </div>
+                    <button onclick="logout()" class="md:mt-auto px-4 py-3 border border-[var(--border)] text-slate-200 font-semibold bg-[var(--panel-2)] hover:border-[var(--accent-blue)] transition">Kijelentkezés</button>
+                </aside>
 
-                <div class="bg-gray-900/80 backdrop-blur-sm p-6 rounded shadow mb-16 border-l-4 border-cyan-500">
-                    <h3 class="text-xl font-bold mb-4 text-gray-200">Új bejegyzés hozzáadása</h3>
-                    
-                    <div class="mb-4">
-                        <label class="block text-sm font-bold text-gray-400 mb-1">Típus</label>
-                        <select id="type" onchange="handleTypeChange()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded text-gray-200">
-                            <option value="nothing" style="color: gray;">Semmi</option>
-                            <option value="Hír" style="color: #38bdf8;">Hír</option>
-                            <option value="Kép" style="color: #fbbf24;">Kép</option>
-                            <option value="Videó" style="color: #a78bfa;">Videó</option>
-                            <option value="Táblázat" style="color: #22c55e;">Táblázat</option>
-                        </select>
-                        <div class="mt-3">
-                            <button type="button" id="importantBtn" onclick="toggleImportant()" class="px-3 py-2 text-sm font-bold rounded border border-amber-400/60 text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition">
-                                Fontos: KI
+                <main class="flex-1 w-full overflow-y-auto md:ml-64">
+                    <header class="sticky top-0 z-30 backdrop-blur bg-[var(--panel-2)]/95 border-b border-[var(--border)] px-4 md:px-8 py-4 flex flex-col gap-4">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.35em] text-[var(--accent-blue)]">Dashboard</p>
+                                <h2 class="text-3xl font-black text-white">TV tartalomkezelés</h2>
+                            </div>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <div id="currentUserBadge" class="text-xs sm:text-sm px-3 py-2 border border-[var(--border)] bg-[var(--panel-2)] text-slate-200 rounded">
+                                    Belépve: -
+                                </div>
+                                <button onclick="loadNews()" class="px-4 py-2 bg-[var(--panel-2)] border border-[var(--border)] text-sm font-semibold text-slate-200 hover:border-[var(--accent-blue)]">Frissítés</button>
+                                <button onclick="showSection('news')" class="px-4 py-2 bg-[var(--accent-blue)] text-white text-sm font-semibold shadow hover:bg-[#2f8cc4]">Új bejegyzés</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="panel p-4 shadow">
+                                <p class="text-xs text-slate-400 uppercase tracking-wide">Összes</p>
+                                <p id="metricTotal" class="text-3xl font-black text-white">0</p>
+                            </div>
+                            <div class="panel p-4 shadow">
+                                <p class="text-xs text-slate-400 uppercase tracking-wide">Kiemelt</p>
+                                <p id="metricImportant" class="text-3xl font-black text-[var(--accent-orange)]">0</p>
+                            </div>
+                            <div class="panel p-4 shadow">
+                                <p class="text-xs text-slate-400 uppercase tracking-wide">Videók</p>
+                                <p id="metricVideos" class="text-3xl font-black text-sky-300">0</p>
+                            </div>
+                            <div class="panel p-4 shadow">
+                                <p class="text-xs text-slate-400 uppercase tracking-wide">Albumok</p>
+                                <p id="metricAlbums" class="text-3xl font-black text-emerald-300">0</p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <section class="px-4 md:px-8 py-8 space-y-10" id="contentArea">
+                        <div id="newsSection" class="panel shadow-lg p-6 space-y-6">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.35em] text-red-400">Beviteli panel</p>
+                                    <h3 class="text-2xl font-bold text-white">Új bejegyzés</h3>
+                                </div>
+                                <div class="flex items-center gap-3 text-sm text-slate-400">
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Fontos jelölés</span>
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Max 10 kép album</span>
+                                </div>
+                            </div>
+
+                            <div class="grid lg:grid-cols-2 gap-6">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-300 mb-1">Típus</label>
+                                        <select id="type" onchange="handleTypeChange()" class="w-full bg-[var(--panel-2)] border border-[var(--border)] p-3 text-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]">
+                                            <option value="Hír" selected style="color: #38bdf8;">Hír</option>
+                                            <option value="Képek" style="color: #fbbf24;">Képek (album)</option>
+                                            <option value="Videó" style="color: #a78bfa;">Videó</option>
+                                            <option value="Táblázat" style="color: #22c55e;">Táblázat</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="flex items-center gap-3">
+                                        <button type="button" id="importantBtn" onclick="toggleImportant()" class="px-3 py-2 text-sm font-bold rounded-lg border border-amber-400/60 text-amber-200 bg-amber-500/10 hover:bg-amber-500/20 transition">
+                                            Fontos: KI
+                                        </button>
+                                        <span class="text-xs text-slate-400">Kapcsold be, ha sürgős/kiemelt tartalom.</span>
+                                    </div>
+
+                                    <div id="headlineContainer" style="display: none;">
+                                        <label class="block text-sm font-bold text-slate-300 mb-1">Címsor</label>
+                                        <div class="relative">
+                                            <input type="text" id="headline" maxlength="30" oninput="updateCounts()" class="w-full bg-[var(--panel-2)] border border-[var(--border)] p-3 font-bold pr-16 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]">
+                                            <span id="headCount" class="absolute right-3 top-3 text-xs text-slate-500 font-mono">0/30</span>
+                                        </div>
+                                    </div>
+
+                                    <div id="bodyContainerWrapper" style="display: none;">
+                                        <label class="block text-sm font-bold text-slate-300 mb-1">Tartalom (Max 800)</label>
+                                        <div class="relative">
+                                            <textarea id="body" maxlength="800" oninput="updateCounts()" class="w-full bg-[var(--panel-2)] border border-[var(--border)] p-3 h-32 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-blue)]"></textarea>
+                                            <span id="bodyCount" class="absolute right-3 bottom-3 text-xs text-slate-500 font-mono bg-[var(--panel-2)]/80 p-1">0/800</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div id="mediaUploadContainer" style="display: none;" class="bg-[var(--panel-2)]/80 backdrop-blur-sm p-4 border-dashed border-2 border-[var(--border)]">
+                                        <label class="block text-sm font-bold text-slate-200 mb-2">Média feltöltése (Képek: max 10)</label>
+                                        <input type="file" id="fileInput" accept="image/*,video/*" onchange="handleFileSelect()" class="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:bg-[var(--accent-blue)] file:text-white hover:file:bg-[#2f8cc4]">
+                                    </div>
+
+                                    <div id="imagePreview" class="grid grid-cols-2 sm:grid-cols-3 gap-3 hidden"></div>
+
+                                    <div id="docUploadContainer" style="display: none;" class="bg-[var(--panel-2)]/80 backdrop-blur-sm p-4 border-dashed border-2 border-[var(--border)]">
+                                        <label class="block text-sm font-bold text-slate-200 mb-1">Dokumentum feltöltése</label>
+                                        <p id="docHint" class="text-xs text-[var(--accent-orange)] mb-2">Csak TXT vagy DOCX tölthető fel; a feltöltött szöveg csak a tartalom mezőt tölti ki, címet nem.</p>
+                                        <input type="file" id="docInput" accept=".txt,.docx" class="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-emerald-600 file:text-white hover:file:bg-emerald-700" onchange="handleDocumentUpload()">
+                                        <p id="docStatus" class="text-xs text-slate-400 mt-2"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="pubBtn" onclick="publishNews()" class="w-full bg-[var(--accent-blue)] hover:bg-[#2f8cc4] text-white font-bold py-4 shadow text-lg transition-all">
+                                Közzététel
                             </button>
-                            <span class="text-xs text-gray-400 ml-2">Kapcsold be, ha sürgős/kiemelt tartalom.</span>
                         </div>
-                    </div>
 
-                    <div class="mb-4" id="headlineContainer" style="display: none;">
-                        <label class="block text-sm font-bold text-gray-400 mb-1">Címsor</label>
-                        <div class="relative">
-                            <input type="text" id="headline" maxlength="50" oninput="updateCounts()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded font-bold pr-16 text-gray-200 placeholder-gray-500">
-                            <span id="headCount" class="absolute right-3 top-3 text-xs text-gray-500 font-mono">0/50</span>
+                        <div id="newsListBlock" class="panel shadow-lg p-6 space-y-4">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.35em] text-slate-400">Lista</p>
+                                    <h3 class="text-2xl font-bold text-white">Jelenlegi bejegyzések</h3>
+                                </div>
+                                <button id="deleteAllBtn" onclick="deleteAllNews()" class="text-slate-100 font-bold border border-[var(--border)] px-4 py-2 bg-[var(--panel-2)] hover:border-[var(--accent-blue)]">Összes törlése</button>
+                            </div>
+                            <div id="newsList" class="space-y-4 pb-4"></div>
                         </div>
-                    </div>
 
-                    <div class="mb-4" id="bodyContainerWrapper" style="display: none;">
-                        <label class="block text-sm font-bold text-gray-400 mb-1">Tartalom (Max 2000)</label>
-                        <div class="relative">
-                            <textarea id="body" maxlength="2000" oninput="updateCounts()" class="w-full bg-gray-800 border border-gray-700 p-3 rounded h-32 text-gray-200 placeholder-gray-500"></textarea>
-                            <span id="bodyCount" class="absolute right-3 bottom-3 text-xs text-gray-500 font-mono bg-gray-800/80 p-1 rounded">0/2000</span>
+                        <div id="settingsSection" class="panel shadow-lg p-6 space-y-4 force-hidden">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.35em] text-red-300">Beállítások</p>
+                                <h3 class="text-2xl font-bold text-white">Megjelenítés</h3>
+                            </div>
+                            <div class="flex items-center justify-between bg-[var(--panel-2)] border border-[var(--border)] p-4">
+                                <div>
+                                    <p class="text-lg font-semibold text-gray-200">Óra megjelenítése</p>
+                                    <p class="text-sm text-gray-400">Kapcsold ki, ha a kijelzőn ne látszódjon az óra.</p>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="toggleClock" class="sr-only" onchange="debouncedSaveSettings()">
+                                    <span class="w-14 h-8 bg-gray-600 rounded-full p-1 flex items-center transition" id="toggleClockTrack">
+                                        <span class="w-6 h-6 bg-white rounded-full shadow transform transition" id="toggleClockThumb"></span>
+                                    </span>
+                                </label>
+                            </div>
+                                    <div class="flex items-center justify-between bg-[var(--panel-2)] border border-[var(--border)] p-4">
+                                        <div>
+                                            <p class="text-lg font-semibold text-gray-200">Téma</p>
+                                            <p class="text-sm text-gray-400">Válaszd ki a kijelző világos vagy sötét módját.</p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button id="themeDarkBtn" onclick="setThemePreference('dark')" class="px-4 py-2 border border-[var(--border)] bg-[var(--panel)] text-sm font-semibold hover:border-[var(--accent-blue)]">Sötét</button>
+                                            <button id="themeLightBtn" onclick="setThemePreference('light')" class="px-4 py-2 border border-[var(--border)] bg-[var(--panel)] text-sm font-semibold hover:border-[var(--accent-blue)]">Világos</button>
+                                        </div>
+                                    </div>
+                            <p id="settingsStatus" class="text-sm text-gray-400"></p>
                         </div>
-                    </div>
-                    
-                    <div class="mb-6 bg-gray-800/80 backdrop-blur-sm p-4 rounded border-dashed border-2 border-gray-700" id="mediaUploadContainer" style="display: none;">
-                        <label class="block text-sm font-bold text-gray-200 mb-2">Média feltöltése</label>
-                        <input type="file" id="fileInput" accept="image/*,video/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-purple-600 file:text-white hover:file:bg-purple-700">
-                    </div>
 
-                    <div class="mb-6 bg-gray-800/80 backdrop-blur-sm p-4 rounded border-dashed border-2 border-gray-700" id="docUploadContainer" style="display: none;">
-                        <label class="block text-sm font-bold text-gray-200 mb-2">Dokumentum feltöltése (PDF, DOCX, XLSX, CSV, TXT)</label>
-                        <input type="file" id="docInput" accept=".pdf,.docx,.xlsx,.csv,.txt" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-cyan-600 file:text-white hover:file:bg-cyan-700" onchange="handleDocumentUpload()">
-                        <p id="docStatus" class="text-xs text-gray-400 mt-2"></p>
-                    </div>
+                        <div id="usersSection" class="panel shadow-lg p-6 space-y-6 force-hidden">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.35em] text-[var(--accent-blue)]">Felhasználók</p>
+                                <h3 class="text-2xl font-bold text-white">Jogosultságkezelés</h3>
+                                <p class="text-sm text-slate-400">Állítsd át az admin belépési adatokat vagy hozz létre új felhasználót.</p>
+                            </div>
 
-                    <button id="pubBtn" onclick="publishNews()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 rounded shadow text-lg transition-all">
-                        KÖZZÉTÉTEL
-                    </button>
-                </div>
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div class="space-y-3 bg-[var(--panel-2)] border border-[var(--border)] p-4">
+                                    <h4 class="text-lg font-semibold text-white">Új felhasználó</h4>
+                                    <input id="newUsername" type="text" placeholder="Felhasználónév" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200" />
+                                    <input id="newPassword" type="password" placeholder="Jelszó" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200" />
+                                    <select id="newRole" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200">
+                                        <option value="admin">Admin</option>
+                                        <option value="user">User</option>
+                                        <option value="monitor">Monitor</option>
+                                    </select>
+                                    <button onclick="createUser()" class="w-full bg-[var(--accent-blue)] hover:bg-[#2f8cc4] text-white font-bold py-3">Létrehozás</button>
+                                    <p id="userCreateStatus" class="text-sm text-slate-400"></p>
+                                </div>
 
-                <h3 class="text-xl font-bold text-gray-200 mb-4 mt-16">Jelenlegi bejegyzések</h3>
-                <div class="mb-4 text-right">
-                    <button onclick="deleteAllNews()" class="text-red-400 font-bold border border-red-400/50 px-4 py-2 rounded hover:bg-red-400/10">Összes törlése</button>
-                </div>
-                <div id="newsList" class="space-y-4 pb-10"></div>
+                                <div class="space-y-3 bg-[var(--panel-2)] border border-[var(--border)] p-4">
+                                    <h4 class="text-lg font-semibold text-white">Felhasználó módosítása</h4>
+                                    <select id="editUserSelect" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200"></select>
+                                    <input id="editUsername" type="text" placeholder="Új felhasználónév" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200" />
+                                    <input id="editPassword" type="password" placeholder="Új jelszó" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200" />
+                                    <select id="editRole" class="w-full bg-[var(--panel-1)] border border-[var(--border)] p-3 text-gray-200">
+                                        <option value="admin">Admin</option>
+                                        <option value="user">User</option>
+                                        <option value="monitor">Monitor</option>
+                                    </select>
+                                    <button onclick="updateUser()" class="w-full bg-[var(--accent-orange)] hover:bg-amber-500 text-black font-bold py-3">Módosítás</button>
+                                    <p id="userUpdateStatus" class="text-sm text-slate-400"></p>
+                                </div>
+                            </div>
+
+                            <div class="bg-[var(--panel-2)] border border-[var(--border)] p-4">
+                                <h4 class="text-lg font-semibold text-white mb-2">Létező felhasználók</h4>
+                                <ul id="userList" class="space-y-2 text-slate-200 text-sm"></ul>
+                            </div>
+                        </div>
+
+                        <div id="auditSection" class="panel shadow-lg p-6 space-y-4 force-hidden">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs uppercase tracking-[0.35em] text-[var(--accent-blue)]">Napló</p>
+                                    <h3 class="text-2xl font-bold text-white">Eseménynapló</h3>
+                                    <p class="text-sm text-slate-400">Bejelentkezések és közzétett bejegyzések időbélyeggel.</p>
+                                </div>
+                                <button onclick="loadAudit()" class="px-4 py-2 bg-[var(--panel-2)] border border-[var(--border)] text-sm font-semibold text-slate-200 hover:border-[var(--accent-blue)]">Frissítés</button>
+                            </div>
+                            <div id="auditList" class="space-y-3 text-sm"></div>
+                        </div>
+                    </section>
+                </main>
             </div>
         </div>
-    </div>
 
     <div class="hidden text-center text-gray-500 text-sm">
         <p>Project created by Szász Roland</p>
@@ -106,8 +328,40 @@
         const DEFAULT_IMAGE = '/data/default.jpg'; 
         let lastDocResult = null; // Stores the latest processed document (text/table + url)
         let importantFlag = false; // Tracks if the current entry is marked important
+        let currentSettings = { showClock: true, theme: 'dark' };
+        let currentRole = 'admin';
+        let currentUser = '';
+        let saveSettingsTimeout = null;
+        let selectedImageFiles = []; // For Képek album previews/removal
 
-        if(localStorage.getItem('tv_auth') === 'true') showDashboard();
+        const limitTableRows = (tableData) => {
+            if (!tableData || !tableData.length) return tableData;
+            const headers = tableData[0];
+            const rows = tableData.slice(1, 17); // show only first 16 rows
+            return [headers, ...rows];
+        };
+
+        const applyTheme = (theme) => {
+            const safe = theme === 'light' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', safe);
+            document.body.setAttribute('data-theme', safe);
+        };
+
+        applyTheme('dark');
+
+        if(localStorage.getItem('tv_auth') === 'true') {
+            currentRole = localStorage.getItem('tv_role') || 'admin';
+            currentUser = localStorage.getItem('tv_user') || '';
+            showDashboard();
+        }
+
+        // Ensure default type is Hír on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const typeSelect = document.getElementById('type');
+            if (typeSelect && !typeSelect.value) {
+                typeSelect.value = 'Hír';
+            }
+        });
 
         // Remove legacy warning text about only 12 rows being visible in table mode
         (() => {
@@ -121,7 +375,7 @@
         })();
 
         function handleTypeChange() {
-            const type = document.getElementById('type').value;
+            const type = document.getElementById('type').value || 'Hír';
             const headlineInput = document.getElementById('headline');
             const headlineContainer = document.getElementById('headlineContainer'); 
             const bodyInput = document.getElementById('body'); 
@@ -130,54 +384,48 @@
             const mediaUploadContainer = document.getElementById('mediaUploadContainer'); 
             const docUploadContainer = document.getElementById('docUploadContainer');
             const docInput = document.getElementById('docInput');
+            const docHint = document.getElementById('docHint');
 
-            headlineInput.maxLength = 30; 
             resetDocState();
             setImportant(false);
 
-            if (type === 'nothing') {
-                headlineContainer.style.display = 'none';
+            // Reset common UI
+            headlineInput.maxLength = 30;
+            headlineContainer.style.display = 'block';
+            bodyContainerWrapper.style.display = 'block';
+            mediaUploadContainer.style.display = 'block';
+            docUploadContainer.style.display = 'block';
+            bodyInput.value = '';
+            fileInput.value = '';
+            fileInput.multiple = false;
+            docInput.accept = '.txt,.docx';
+            if (docHint) docHint.innerText = 'Csak TXT vagy DOCX tölthető fel; a feltöltött szöveg csak a tartalom mezőt tölti ki, címet nem.';
+
+            if (type === 'Hír') {
+                fileInput.accept = 'image/*';
+                docUploadContainer.style.display = 'block';
+                bodyContainerWrapper.style.display = 'block';
+            } else if (type === 'Videó') {
+                headlineInput.maxLength = 15;
+                fileInput.accept = 'video/*';
                 bodyContainerWrapper.style.display = 'none';
-                mediaUploadContainer.style.display = 'none';
                 docUploadContainer.style.display = 'none';
-                
-                headlineInput.value = '';
-                bodyInput.value = ''; 
-                fileInput.value = ''; 
-                docInput.value = '';
-            } else {
-                headlineContainer.style.display = 'block';
-                if (type === 'Videó') {
-                    mediaUploadContainer.style.display = 'block';
-                    docUploadContainer.style.display = 'none';
-                    bodyContainerWrapper.style.display = 'none';
-                    bodyInput.value = '';
-                    fileInput.accept = 'video/*';
-                    fileInput.multiple = false;
-                } else if (type === 'Kép') {
-                    mediaUploadContainer.style.display = 'block';
-                    docUploadContainer.style.display = 'none';
-                    bodyContainerWrapper.style.display = 'none';
-                    bodyInput.value = '';
-                    fileInput.accept = 'image/*';
-                    fileInput.multiple = true; // allow multiple images for gallery
-                } else if (type === 'Táblázat') {
-                    mediaUploadContainer.style.display = 'none';
-                    docUploadContainer.style.display = 'block';
-                    bodyContainerWrapper.style.display = 'none';
-                    bodyInput.value = '';
-                    fileInput.value = '';
-                    docInput.accept = '.pdf,.docx,.xlsx,.csv,.txt';
-                    fileInput.multiple = false;
-                } else {
-                    mediaUploadContainer.style.display = 'block';
-                    docUploadContainer.style.display = 'block';
-                    bodyContainerWrapper.style.display = 'block';
-                    fileInput.accept = 'image/*';
-                    fileInput.multiple = false;
-                    docInput.accept = '.pdf,.docx,.xlsx,.csv,.txt';
-                }
+            } else if (type === 'Képek') {
+                headlineInput.maxLength = 50;
+                bodyContainerWrapper.style.display = 'none';
+                docUploadContainer.style.display = 'none';
+                fileInput.accept = 'image/*';
+                fileInput.multiple = true; // allow multiple images for gallery (album)
+            } else if (type === 'Táblázat') {
+                mediaUploadContainer.style.display = 'none';
+                docUploadContainer.style.display = 'block';
+                bodyContainerWrapper.style.display = 'none';
+                docInput.accept = '.pdf,.docx,.xlsx,.csv,.txt';
+                if (docHint) docHint.innerText = 'Táblázatnál CSV/XLSX/PDF/DOCX/TXT tölthető; csak az első 16 sor jelenik meg.';
             }
+
+            selectedImageFiles = [];
+            updateImagePreview();
             updateCounts();
         }
 
@@ -187,8 +435,60 @@
             const hMax = headline.maxLength;
             const b = document.getElementById('body').value.length;
             document.getElementById('headCount').innerText = `${h}/${hMax}`;
-            const bMax = document.getElementById('body').maxLength || 2000;
+            const bMax = document.getElementById('body').maxLength || 800;
             document.getElementById('bodyCount').innerText = `${b}/${bMax}`;
+        }
+
+        function updateImagePreview() {
+            const preview = document.getElementById('imagePreview');
+            if (!preview) return;
+            if (!selectedImageFiles || selectedImageFiles.length === 0) {
+                preview.classList.add('hidden');
+                preview.innerHTML = '';
+                return;
+            }
+            preview.classList.remove('hidden');
+            preview.innerHTML = selectedImageFiles.map((file, idx) => {
+                const url = URL.createObjectURL(file);
+                return `
+                    <div class="relative group rounded-lg overflow-hidden border border-[#1f2735] bg-[#1a2130]/80">
+                        <img src="${url}" alt="preview" class="w-full h-32 object-cover" />
+                        <button type="button" onclick="removeImageAt(${idx})" class="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow opacity-0 group-hover:opacity-100 transition">X</button>
+                        <div class="absolute bottom-1 left-1 text-[11px] bg-black/60 text-white px-2 py-0.5">${file.name}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        function removeImageAt(idx) {
+            if (!selectedImageFiles || idx < 0 || idx >= selectedImageFiles.length) return;
+            selectedImageFiles.splice(idx, 1);
+            updateImagePreview();
+        }
+
+        function handleFileSelect() {
+            const type = document.getElementById('type').value;
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput || !fileInput.files) return;
+
+            if (type === 'Képek') {
+                const incoming = Array.from(fileInput.files);
+                const remaining = Math.max(0, 10 - selectedImageFiles.length);
+                const addable = incoming.slice(0, remaining);
+                selectedImageFiles = selectedImageFiles.concat(addable);
+                fileInput.value = '';
+                updateImagePreview();
+            } else {
+                // Non-album types keep default behavior
+                updateImagePreview();
+            }
+        }
+
+        function setThemePreference(mode) {
+            const next = mode === 'light' ? 'light' : 'dark';
+            currentSettings.theme = next;
+            applyTheme(next);
+            applySettingsToUI();
+            debouncedSaveSettings();
         }
 
         function setImportant(val) {
@@ -216,6 +516,343 @@
             if (docInput) docInput.value = '';
         }
 
+        function showSection(section) {
+            const news = document.getElementById('newsSection');
+            const settings = document.getElementById('settingsSection');
+            const users = document.getElementById('usersSection');
+            const audit = document.getElementById('auditSection');
+            const tabNews = document.getElementById('tabNews');
+            const tabSettings = document.getElementById('tabSettings');
+            const tabUsers = document.getElementById('tabUsers');
+            const tabAudit = document.getElementById('tabAudit');
+            const newsListBlock = document.getElementById('newsListBlock');
+            [news, settings, users, audit].forEach(el => el && el.classList.add('force-hidden'));
+            [tabNews, tabSettings, tabUsers, tabAudit].forEach(el => el && el.classList.remove('tab-active'));
+
+            if (section === 'users' && currentRole !== 'admin' && currentRole !== 'superadmin') {
+                section = 'news';
+            }
+
+            if (section === 'audit' && currentRole !== 'superadmin') {
+                section = 'news';
+            }
+
+            if (section === 'settings') {
+                settings.classList.remove('force-hidden');
+                tabSettings.classList.add('tab-active');
+                if (newsListBlock) newsListBlock.classList.add('force-hidden');
+            } else if (section === 'audit') {
+                audit.classList.remove('force-hidden');
+                tabAudit.classList.add('tab-active');
+                if (newsListBlock) newsListBlock.classList.add('force-hidden');
+                loadAudit();
+            } else if (section === 'users') {
+                users.classList.remove('force-hidden');
+                tabUsers.classList.add('tab-active');
+                if (newsListBlock) newsListBlock.classList.add('force-hidden');
+                loadUsers();
+            } else {
+                news.classList.remove('force-hidden');
+                tabNews.classList.add('tab-active');
+                if (newsListBlock) newsListBlock.classList.remove('force-hidden');
+            }
+            applyRoleRestrictions();
+        }
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                currentSettings = {
+                    showClock: data && typeof data.showClock === 'boolean' ? data.showClock : true,
+                    theme: data && data.theme === 'light' ? 'light' : 'dark'
+                };
+            } catch (e) {
+                currentSettings = { showClock: true, theme: 'dark' };
+            }
+            applyTheme(currentSettings.theme);
+            applySettingsToUI();
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/users');
+                const data = await res.json();
+                const userList = document.getElementById('userList');
+                const select = document.getElementById('editUserSelect');
+                const editRole = document.getElementById('editRole');
+                if (userList) {
+                    userList.innerHTML = data.length ? data.map(u => {
+                        const delBtn = u.username === 'sziszi' ? '<span class="text-xs text-slate-500">védett</span>' : `<button class="text-xs bg-red-600 text-white px-2 py-1" onclick="deleteUser('${u.username}')">Törlés</button>`;
+                        return `<li class="flex items-center justify-between bg-[var(--panel-1)] border border-[var(--border)] px-3 py-2 gap-3"><div class="flex items-center gap-2"><span>${u.username}</span><span class="text-xs px-2 py-1 border border-[var(--border)] bg-[var(--panel-2)]">${u.role}</span></div>${delBtn}</li>`;
+                    }).join('') : '<li class="text-slate-500">Nincs felhasználó.</li>';
+                }
+                if (select) {
+                    select.innerHTML = data.map(u => `<option value="${u.username}">${u.username}</option>`).join('');
+                    if (editRole && data.length) {
+                        const first = data[0];
+                        editRole.value = first.role || 'admin';
+                    }
+                    select.onchange = () => {
+                        const chosen = data.find(u => u.username === select.value);
+                        if (chosen && editRole) editRole.value = chosen.role || 'admin';
+                    };
+                }
+            } catch (e) {
+                const userList = document.getElementById('userList');
+                if (userList) userList.innerHTML = '<li class="text-red-400">Hiba a felhasználók lekérésekor.</li>';
+            }
+        }
+
+        async function loadAudit() {
+            const list = document.getElementById('auditList');
+            if (list) list.innerHTML = '<p class="text-slate-400">Betöltés...</p>';
+            try {
+                const res = await fetch('/api/audit');
+                const data = await res.json();
+                if (!list) return;
+                if (!Array.isArray(data) || data.length === 0) {
+                    list.innerHTML = '<p class="text-slate-500">Nincs naplóbejegyzés.</p>';
+                    return;
+                }
+                list.innerHTML = data.map(entry => {
+                    const ts = new Date(entry.timestamp || Date.now());
+                    const timeStr = ts.toLocaleString('hu-HU');
+                    const typeLabel = entry.type === 'login' ? 'Bejelentkezés' : (entry.type === 'news_created' ? 'Közzététel' : entry.type);
+                    const headline = entry.headline ? `<div class="text-sm text-slate-300">${entry.headline}</div>` : '';
+                    const message = entry.message ? `<div class="text-xs text-slate-400">${entry.message}</div>` : '';
+                    return `
+                        <div class="bg-[var(--panel-2)] border border-[var(--border)] p-4 flex flex-col gap-1">
+                            <div class="flex items-center justify-between text-sm font-semibold text-white">
+                                <span>${typeLabel}</span>
+                                <span class="text-xs text-slate-400">${timeStr}</span>
+                            </div>
+                            <div class="text-xs text-slate-400">Felhasználó: <span class="font-semibold text-slate-200">${entry.user || 'ismeretlen'}</span></div>
+                            ${headline}
+                            ${message}
+                        </div>`;
+                }).join('');
+            } catch (e) {
+                if (list) list.innerHTML = '<p class="text-red-400">Hiba a napló lekérésekor.</p>';
+            }
+        }
+
+        async function logAudit(type, payload = {}) {
+            try {
+                await fetch('/api/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type,
+                        user: currentUser || 'ismeretlen',
+                        headline: payload.headline || '',
+                        message: payload.message || ''
+                    })
+                });
+            } catch (e) {
+                console.warn('Audit log failed', e);
+            }
+        }
+
+        async function createUser() {
+            const u = document.getElementById('newUsername').value.trim();
+            const p = document.getElementById('newPassword').value.trim();
+            const r = document.getElementById('newRole').value;
+            const status = document.getElementById('userCreateStatus');
+            if (!u || !p) {
+                if (status) status.innerText = 'Hiányzó felhasználónév vagy jelszó.';
+                return;
+            }
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p, role: r })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Hiba');
+                if (status) status.innerText = 'Felhasználó létrehozva.';
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newRole').value = 'admin';
+                loadUsers();
+            } catch (e) {
+                if (status) status.innerText = 'Hiba: ' + e.message;
+            }
+        }
+
+        async function deleteUser(username) {
+            const status = document.getElementById('userUpdateStatus');
+            const confirm = await Swal.fire({
+                title: 'Biztosan törlöd?',
+                text: `${username} felhasználó törlése nem visszavonható.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Igen, törlöm',
+                cancelButtonText: 'Mégsem'
+            });
+            if (!confirm.isConfirmed) return;
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(username)}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Hiba');
+                if (status) status.innerText = 'Felhasználó törölve.';
+                loadUsers();
+            } catch (e) {
+                if (status) status.innerText = 'Hiba: ' + e.message;
+            }
+        }
+
+        async function updateUser() {
+            const current = document.getElementById('editUserSelect').value;
+            const u = document.getElementById('editUsername').value.trim();
+            const p = document.getElementById('editPassword').value.trim();
+            const r = document.getElementById('editRole').value;
+            const status = document.getElementById('userUpdateStatus');
+            if (!u || !p) {
+                if (status) status.innerText = 'Hiányzó felhasználónév vagy jelszó.';
+                return;
+            }
+            try {
+                const res = await fetch(`/api/users/${encodeURIComponent(current)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p, role: r })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Hiba');
+                if (status) status.innerText = 'Felhasználó módosítva.';
+                document.getElementById('editUsername').value = '';
+                document.getElementById('editPassword').value = '';
+                document.getElementById('editRole').value = r;
+                loadUsers();
+            } catch (e) {
+                if (status) status.innerText = 'Hiba: ' + e.message;
+            }
+        }
+
+        function updateUserBadge() {
+            const badge = document.getElementById('currentUserBadge');
+            if (!badge) return;
+            const role = currentRole || 'admin';
+            const user = currentUser || 'ismeretlen';
+            badge.innerText = `Belépve: ${user} (${role})`;
+        }
+
+        function applyRoleRestrictions() {
+            const role = currentRole || 'admin';
+            const tabSettings = document.getElementById('tabSettings');
+            const tabUsers = document.getElementById('tabUsers');
+            const tabAudit = document.getElementById('tabAudit');
+            const deleteAllBtn = document.getElementById('deleteAllBtn');
+            const publishBtn = document.getElementById('pubBtn');
+
+            const formControls = [
+                document.getElementById('headline'),
+                document.getElementById('body'),
+                document.getElementById('fileInput'),
+                document.getElementById('docInput'),
+                document.getElementById('type'),
+                document.getElementById('importantBtn')
+            ];
+
+            if (role === 'monitor') {
+                if (tabSettings) tabSettings.classList.add('force-hidden');
+                if (tabUsers) tabUsers.classList.add('force-hidden');
+                if (tabAudit) tabAudit.classList.add('force-hidden');
+                if (deleteAllBtn) deleteAllBtn.classList.add('hidden');
+                if (publishBtn) { publishBtn.classList.add('opacity-50', 'pointer-events-none'); publishBtn.disabled = true; }
+                formControls.forEach(el => { if (el) { el.disabled = true; el.classList.add('opacity-60'); } });
+            } else if (role === 'user') {
+                if (tabUsers) tabUsers.classList.add('force-hidden');
+                if (tabSettings) tabSettings.classList.remove('force-hidden');
+                if (tabAudit) tabAudit.classList.add('force-hidden');
+                if (deleteAllBtn) deleteAllBtn.classList.remove('hidden');
+                if (publishBtn) { publishBtn.classList.remove('opacity-50', 'pointer-events-none'); publishBtn.disabled = false; }
+                formControls.forEach(el => { if (el) { el.disabled = false; el.classList.remove('opacity-60'); } });
+            } else if (role === 'admin') {
+                if (tabSettings) tabSettings.classList.remove('force-hidden');
+                if (tabUsers) tabUsers.classList.remove('force-hidden');
+                if (tabAudit) tabAudit.classList.add('force-hidden');
+                if (deleteAllBtn) deleteAllBtn.classList.remove('hidden');
+                if (publishBtn) { publishBtn.classList.remove('opacity-50', 'pointer-events-none'); publishBtn.disabled = false; }
+                formControls.forEach(el => { if (el) { el.disabled = false; el.classList.remove('opacity-60'); } });
+            } else if (role === 'superadmin') {
+                if (tabSettings) tabSettings.classList.remove('force-hidden');
+                if (tabUsers) tabUsers.classList.remove('force-hidden');
+                if (tabAudit) tabAudit.classList.remove('force-hidden');
+                if (deleteAllBtn) deleteAllBtn.classList.remove('hidden');
+                if (publishBtn) { publishBtn.classList.remove('opacity-50', 'pointer-events-none'); publishBtn.disabled = false; }
+                formControls.forEach(el => { if (el) { el.disabled = false; el.classList.remove('opacity-60'); } });
+            }
+        }
+
+        function applySettingsToUI() {
+            const toggle = document.getElementById('toggleClock');
+            const track = document.getElementById('toggleClockTrack');
+            const thumb = document.getElementById('toggleClockThumb');
+            const themeLightBtn = document.getElementById('themeLightBtn');
+            const themeDarkBtn = document.getElementById('themeDarkBtn');
+            if (toggle && track && thumb) {
+                toggle.checked = !!currentSettings.showClock;
+                if (toggle.checked) {
+                    track.classList.remove('bg-gray-600');
+                    track.classList.add('bg-emerald-500');
+                    thumb.classList.add('translate-x-6');
+                } else {
+                    track.classList.add('bg-gray-600');
+                    track.classList.remove('bg-emerald-500');
+                    thumb.classList.remove('translate-x-6');
+                }
+            }
+
+            const isLight = currentSettings.theme === 'light';
+            if (themeLightBtn && themeDarkBtn) {
+                const activeClasses = ['border-[var(--accent-blue)]', 'shadow', 'text-white', 'bg-[var(--accent-blue)]'];
+                const inactiveClasses = ['bg-[var(--panel)]', 'text-slate-200'];
+                if (isLight) {
+                    themeLightBtn.classList.add(...activeClasses);
+                    themeLightBtn.classList.remove(...inactiveClasses);
+                    themeDarkBtn.classList.remove(...activeClasses);
+                    themeDarkBtn.classList.add(...inactiveClasses);
+                } else {
+                    themeDarkBtn.classList.add(...activeClasses);
+                    themeDarkBtn.classList.remove(...inactiveClasses);
+                    themeLightBtn.classList.remove(...activeClasses);
+                    themeLightBtn.classList.add(...inactiveClasses);
+                }
+            }
+        }
+
+        function debouncedSaveSettings() {
+            if (saveSettingsTimeout) clearTimeout(saveSettingsTimeout);
+            saveSettingsTimeout = setTimeout(saveSettings, 300);
+        }
+
+        async function saveSettings() {
+            const status = document.getElementById('settingsStatus');
+            const toggle = document.getElementById('toggleClock');
+            const nextValue = toggle ? !!toggle.checked : true;
+            currentSettings.showClock = nextValue;
+            const theme = currentSettings.theme === 'light' ? 'light' : 'dark';
+            applyTheme(theme);
+            if (status) status.innerText = 'Mentés...';
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ showClock: nextValue, theme })
+                });
+                if (!res.ok) throw new Error('Save failed');
+                if (status) status.innerText = 'Beállítások mentve.';
+            } catch (e) {
+                if (status) status.innerText = 'Hiba mentés közben.';
+            }
+            applySettingsToUI();
+        }
+
         async function handleDocumentUpload() {
             const docInput = document.getElementById('docInput');
             const docStatus = document.getElementById('docStatus');
@@ -240,12 +877,13 @@
 
                 if (type === 'Táblázat') {
                     if (data.tableData && data.tableData.length > 0) {
-                        docStatus.innerText = 'Táblázatos adat beolvasva.';
+                        lastDocResult.tableData = limitTableRows(data.tableData);
+                        docStatus.innerText = 'Táblázatos adat beolvasva (max 16 sor jelenik meg).';
                     } else if (data.text) {
                         // Fallback: turn lines into a single-column table
                         const rows = data.text.split(/\r?\n/).filter(Boolean).map(line => [line]);
-                        lastDocResult.tableData = [['Tartalom'], ...rows];
-                        docStatus.innerText = 'Szöveges dokumentum táblázatként mentve.';
+                        lastDocResult.tableData = limitTableRows([['Tartalom'], ...rows]);
+                        docStatus.innerText = 'Szöveges dokumentum táblázatként mentve (max 16 sor).';
                     } else {
                         throw new Error('Nem sikerült táblázatot kinyerni a dokumentumból.');
                     }
@@ -274,6 +912,10 @@
                 const data = await res.json();
                 if(data.success) {
                     localStorage.setItem('tv_auth', 'true');
+                    currentUser = u;
+                    currentRole = data.role || 'admin';
+                    localStorage.setItem('tv_role', currentRole);
+                    localStorage.setItem('tv_user', currentUser);
                     showDashboard();
                 } else {
                     document.getElementById('loginError').innerText = "Helytelen jelszó";
@@ -287,32 +929,51 @@
             document.getElementById('loginPanel').style.display = 'none';
             document.getElementById('dashboardPanel').classList.remove('force-hidden');
             document.body.classList.remove('bg-gray-900', 'flex', 'items-center', 'justify-center');
+            applyTheme(currentSettings.theme);
+            showSection('news');
             loadNews();
+            loadSettings();
+            updateUserBadge();
+            applyRoleRestrictions();
         }
 
-        function logout() { localStorage.removeItem('tv_auth'); location.reload(); }
+        function logout() { localStorage.removeItem('tv_auth'); localStorage.removeItem('tv_role'); localStorage.removeItem('tv_user'); location.reload(); }
 
         async function loadNews() {
             try {
                 const res = await fetch('/api/news');
                 const data = await res.json();
                 const list = document.getElementById('newsList');
+
+                const updateMetric = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = value;
+                };
+                const total = data.length;
+                const important = data.filter((i) => i.important || i.type === 'FONTOS').length;
+                const videos = data.filter((i) => i.type === 'Videó').length;
+                const albums = data.filter((i) => i.type === 'Képek').length;
+                updateMetric('metricTotal', total);
+                updateMetric('metricImportant', important);
+                updateMetric('metricVideos', videos);
+                updateMetric('metricAlbums', albums);
                 
                 if(data.length === 0) {
                     list.innerHTML = '<p class="text-center text-gray-500">Nincsenek bejegyzések.</p>';
                     return;
                 }
 
+                const canManage = currentRole === 'admin' || currentRole === 'user';
                 list.innerHTML = data.map((item) => {
                     const isVideo = item.type === 'Videó';
-                    const isImageOnly = item.type === 'Kép';
+                    const isImageOnly = item.type === 'Kép' || item.type === 'Képek';
                     const isTable = item.type === 'Táblázat';
                     const isImportant = item.important || item.type === 'FONTOS';
                     const attachmentLink = item.attachment ? `<a href="${item.attachment}" target="_blank" class="text-sm text-purple-300 underline block mt-2">Csatolt dokumentum megnyitása</a>` : '';
 
                     let typeLabel = '';
                     if (item.type === 'Hír') typeLabel = `<span class="text-xs font-bold text-cyan-400">${item.type}</span>`;
-                    else if (item.type === 'Kép') typeLabel = `<span class="text-xs font-bold text-amber-300">${item.type}</span>`;
+                    else if (item.type === 'Kép' || item.type === 'Képek') typeLabel = `<span class="text-xs font-bold text-amber-300">Képek</span>`;
                     else if (item.type === 'Videó') typeLabel = `<span class="text-xs font-bold text-purple-400">${item.type}</span>`;
                     else if (item.type === 'Táblázat') typeLabel = `<span class="text-xs font-bold text-green-400">${item.type}</span>`;
                     else if (item.type === 'FONTOS') typeLabel = `<span class="text-xs font-bold text-pink-300">FONTOS</span>`;
@@ -328,17 +989,17 @@
                             const rows = item.tableData.slice(1);
                             
                             mainContent = `
-                                <div class="overflow-x-auto mt-2 shadow-lg rounded-lg border border-gray-700">
-                                    <table class="min-w-full divide-y divide-gray-700">
-                                        <thead class="bg-gray-800">
+                                <div class="overflow-x-auto mt-2 shadow-lg rounded-lg border border-slate-800">
+                                    <table class="min-w-full divide-y divide-slate-800">
+                                        <thead class="bg-slate-900">
                                             <tr>
-                                                ${headers.map(header => `<th scope="col" class="px-4 py-3 text-left text-sm font-medium text-gray-400 uppercase tracking-wider">${header}</th>`).join('')}
+                                                ${headers.map(header => `<th scope="col" class="px-4 py-3 text-left text-sm font-medium text-slate-400 uppercase tracking-wider">${header}</th>`).join('')}
                                             </tr>
                                         </thead>
-                                        <tbody class="bg-gray-900 divide-y divide-gray-700">
+                                        <tbody class="bg-slate-950 divide-y divide-slate-900">
                                             ${rows.map(row => `
                                                 <tr>
-                                                    ${row.map(cell => `<td class="px-4 py-3 whitespace-nowrap text-base text-gray-300">${cell}</td>`).join('')}
+                                                    ${row.map(cell => `<td class="px-4 py-3 whitespace-nowrap text-base text-slate-200">${cell}</td>`).join('')}
                                                 </tr>
                                             `).join('')}
                                         </tbody>
@@ -353,31 +1014,31 @@
                         const bodyContent = (isVideo || isImageOnly) ? '<i class="text-gray-500">Nincs leírás</i>' : item.body;
                         const thumb = isImageOnly && item.images && item.images.length > 0 ? item.images[0] : item.image;
                         mediaSection = isVideo ? 
-                            `<video src="${item.image}" class="w-full sm:w-48 h-32 object-cover rounded bg-gray-800 border border-gray-700" muted loop></video>` :
-                            `<div class="relative w-full sm:w-48 h-32 rounded bg-gray-800 border border-gray-700 overflow-hidden">
+                            `<video src="${item.image}" class="w-full sm:w-48 h-32 object-cover rounded bg-slate-900 border border-slate-800" muted loop></video>` :
+                            `<div class="relative w-full sm:w-48 h-32 rounded bg-slate-900 border border-slate-800 overflow-hidden">
                                 <img src="${thumb}" class="w-full h-full object-cover">
                                 ${isImageOnly && item.images && item.images.length > 1 ? `<span class="absolute bottom-1 right-1 bg-black/70 text-xs text-white px-2 py-0.5 rounded">${item.images.length} kép</span>` : ''}
                             </div>`;
                         
                         mainContent = `
-                            <p class="text-gray-400 text-sm whitespace-pre-wrap line-clamp-3 break-words">${bodyContent}</p>
+                            <p class="text-slate-300 text-sm whitespace-pre-wrap line-clamp-3 break-words">${bodyContent}</p>
                             ${attachmentLink}
                         `;
                     }
 
                     return `
-                        <div class="bg-gray-900/80 backdrop-blur-sm p-4 rounded shadow flex flex-col sm:flex-row gap-4 border border-gray-700">
+                        <div class="bg-slate-900/80 backdrop-blur-sm p-4 rounded-xl shadow flex flex-col sm:flex-row gap-4 border border-slate-800">
                             ${mediaSection}
                             <div class="flex-1">
-                                <h4 class="font-bold text-xl text-gray-200 mb-1">${item.headline}</h4>
+                                <h4 class="font-bold text-xl text-white mb-1">${item.headline}</h4>
                                 ${typeLabel} ${importantBadge}
                                 ${mainContent}
                             </div>
-                            <div class="flex items-center justify-center sm:justify-end">
-                                <button onclick="deleteNews(${item.id})" class="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded shadow font-bold flex items-center gap-2">
+                            ${canManage ? `<div class="flex items-center justify-center sm:justify-end">
+                                <button onclick="deleteNews(${item.id})" class="bg-pink-600/80 hover:bg-pink-600 text-white px-6 py-2 rounded-lg shadow font-bold flex items-center gap-2">
                                     TÖRLÉS
                                 </button>
-                            </div>
+                            </div>` : ''}
                         </div>
                     `;
                 }).join('');
@@ -387,15 +1048,15 @@
         async function publishNews() {
             const h = document.getElementById('headline').value;
             const b = document.getElementById('body').value;
-            const t = document.getElementById('type').value;
+            const t = document.getElementById('type').value || 'Hír';
             const f = document.getElementById('fileInput').files[0];
             const docFile = document.getElementById('docInput').files[0];
             const btn = document.getElementById('pubBtn');
 
             const isVideo = t === 'Videó';
-            const isImageOnly = t === 'Kép';
+            const isImageOnly = t === 'Kép' || t === 'Képek';
             const isTable = t === 'Táblázat';
-            const bodyMax = document.getElementById('body').maxLength || 2000;
+            const bodyMax = document.getElementById('body').maxLength || 800;
 
             // If a document is selected but not yet processed, process it now
             if (docFile && !lastDocResult) {
@@ -405,17 +1066,13 @@
             const hasDocText = lastDocResult && lastDocResult.text;
             const hasDocTable = lastDocResult && lastDocResult.tableData && lastDocResult.tableData.length > 0;
 
-            // New validation: Type must be selected
-            if (t === 'nothing') {
-                return Swal.fire({ icon: 'info', title: 'Információ', text: 'Kérem, válasszon egy típust a közzétételhez!' });
-            }
-
             // --- Validation ---
             if (!h) { // Headline is mandatory for all
                 return Swal.fire({ icon: 'info', title: 'Információ', text: 'A címsor megadása kötelező!' });
             }
-            if (h.length > 30) { // All headlines max 30
-                return Swal.fire({ icon: 'info', title: 'Információ', text: 'A címsor maximum 30 karakter lehet!' });
+            const headLimit = isVideo ? 15 : (isImageOnly ? 50 : 30);
+            if (h.length > headLimit) {
+                return Swal.fire({ icon: 'info', title: 'Információ', text: `A címsor maximum ${headLimit} karakter lehet!` });
             }
 
             // Body content validation (mandatory for all except Videó, Kép és Táblázat, unless a document provided text)
@@ -427,13 +1084,19 @@
             }
 
             // File upload validation
-            if (isVideo && !f) {
+                    if (isVideo && !f) {
                 return Swal.fire({ icon: 'info', title: 'Információ', text: 'Videó közzétételéhez fájl megadása kötelező!' });
             }
 
-            if (isImageOnly && !f) {
-                return Swal.fire({ icon: 'info', title: 'Információ', text: 'Kép közzétételéhez legalább egy kép fájl megadása kötelező!' });
-            }
+                    if (isImageOnly) {
+                        const filesCount = t === 'Képek' ? selectedImageFiles.length : document.getElementById('fileInput').files.length;
+                        if (filesCount === 0) {
+                            return Swal.fire({ icon: 'info', title: 'Információ', text: 'Képek közzétételéhez legalább egy kép fájl megadása kötelező!' });
+                        }
+                        if (filesCount > 10) {
+                            return Swal.fire({ icon: 'info', title: 'Információ', text: 'Maximum 10 képet tölthet fel egy albumhoz.' });
+                        }
+                    }
 
             if (isTable && !hasDocTable) {
                 return Swal.fire({ icon: 'info', title: 'Információ', text: 'Táblázat típushoz töltsön fel PDF/DOCX/XLSX/CSV/TXT fájlt!' });
@@ -448,9 +1111,9 @@
 
                 // Upload media (image/video) when applicable
                 let galleryUrls = [];
-                if (f && !isTable) {
-                    if (isImageOnly && document.getElementById('fileInput').files.length > 1) {
-                        const files = Array.from(document.getElementById('fileInput').files);
+                if (!isTable) {
+                    if (isImageOnly && t === 'Képek' && selectedImageFiles.length > 0) {
+                        const files = selectedImageFiles.slice(0, 10);
                         for (const imgFile of files) {
                             const fd = new FormData();
                             fd.append('image', imgFile);
@@ -460,7 +1123,7 @@
                             galleryUrls.push(upData.url);
                         }
                         finalMediaUrl = galleryUrls[0];
-                    } else {
+                    } else if (f) {
                         const fd = new FormData();
                         const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image';
                         const fieldName = isVideo ? 'video' : 'image';
@@ -483,11 +1146,13 @@
                     body: (isTable || isVideo || isImageOnly) ? '' : (b || (hasDocText ? lastDocResult.text : '')), 
                     image: isTable ? '' : finalMediaUrl,
                     type: t,
-                    important: importantFlag
+                    important: importantFlag,
+                    createdBy: currentUser || 'ismeretlen',
+                    createdAt: new Date().toISOString()
                 };
 
                 if (isTable) {
-                    newItem.tableData = hasDocTable ? lastDocResult.tableData : [];
+                    newItem.tableData = hasDocTable ? limitTableRows(lastDocResult.tableData) : [];
                 }
 
                 if (isImageOnly) {
@@ -514,11 +1179,14 @@
                 document.getElementById('headline').value = '';
                 document.getElementById('body').value = '';
                 document.getElementById('fileInput').value = '';
+                selectedImageFiles = [];
+                updateImagePreview();
                 resetDocState();
                 setImportant(false);
                 handleTypeChange();
                 updateCounts();
                 loadNews();
+                logAudit('news_created', { headline: h });
                 Swal.fire({ icon: 'success', title: 'Sikeres', text: 'Sikeres közzététel!' });
             } finally {
                 btn.innerText = "KÖZZÉTÉTEL";

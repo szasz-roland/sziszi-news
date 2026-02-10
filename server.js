@@ -38,7 +38,10 @@ const DOC_UPLOAD_DIR = path.resolve(__dirname, 'public/uploads/docs');
 const NEWS_FILE = path.join(DATA_DIR, 'news.json');
 const SEED_DEFAULT_IMAGE = path.resolve(__dirname, 'data/default.jpg');
 const PUBLIC_DEFAULT_IMAGE = path.join(DATA_DIR, 'default.jpg');
-const MAX_BODY_LENGTH = 2000;
+const MAX_BODY_LENGTH = 800;
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const AUDIT_FILE = path.join(DATA_DIR, 'audit.json');
 const PUBLIC_ROOT = path.resolve(__dirname, 'public');
 
 // Ensure directories exist
@@ -60,6 +63,20 @@ try {
     if (!fs.existsSync(NEWS_FILE)) {
         fs.writeFileSync(NEWS_FILE, '[]');
     }
+    if (!fs.existsSync(SETTINGS_FILE)) {
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ showClock: true, theme: 'dark' }, null, 2));
+    }
+    if (!fs.existsSync(AUDIT_FILE)) {
+        fs.writeFileSync(AUDIT_FILE, '[]');
+    }
+    if (!fs.existsSync(USERS_FILE)) {
+        const defaultUser = {
+            username: process.env.ADMIN_USERNAME || 'admin',
+            password: process.env.ADMIN_PASSWORD || 'changeme',
+            role: 'admin'
+        };
+        fs.writeFileSync(USERS_FILE, JSON.stringify([defaultUser], null, 2));
+    }
 } catch (e) { console.error("Error creating news.json:", e); }
 
 // --- HELPERS ---
@@ -68,6 +85,83 @@ const resolveUploadPath = (urlPath) => {
     const safeRelative = path.normalize(urlPath.replace(/^\//, ''));
     const absolutePath = path.join(PUBLIC_ROOT, safeRelative);
     return absolutePath.startsWith(PUBLIC_ROOT) ? absolutePath : null;
+};
+
+const loadSettings = () => {
+    try {
+        if (fs.existsSync(SETTINGS_FILE)) {
+            const raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
+            const parsed = JSON.parse(raw || '{}');
+            return {
+                showClock: parsed.showClock !== false,
+                theme: parsed.theme === 'light' ? 'light' : 'dark'
+            };
+        }
+    } catch (e) {
+        console.error('Failed to read settings:', e);
+    }
+    return { showClock: true, theme: 'dark' };
+};
+
+const loadAudit = () => {
+    try {
+        if (fs.existsSync(AUDIT_FILE)) {
+            const raw = fs.readFileSync(AUDIT_FILE, 'utf8');
+            return JSON.parse(raw || '[]');
+        }
+    } catch (e) {
+        console.error('Failed to read audit:', e);
+    }
+    return [];
+};
+
+const appendAudit = (entry) => {
+    try {
+        const list = loadAudit();
+        const payload = {
+            type: entry.type || 'event',
+            user: entry.user || 'ismeretlen',
+            headline: entry.headline || '',
+            message: entry.message || '',
+            timestamp: new Date().toISOString()
+        };
+        list.unshift(payload);
+        if (list.length > 500) list.length = 500; // cap to avoid unbounded growth
+        fs.writeFileSync(AUDIT_FILE, JSON.stringify(list, null, 2));
+    } catch (e) {
+        console.error('Failed to append audit:', e);
+    }
+};
+
+const normalizeRole = (role) => {
+    const allowed = ['admin', 'user', 'monitor', 'superadmin'];
+    return allowed.includes(role) ? role : 'admin';
+};
+
+const loadUsers = () => {
+    try {
+        if (fs.existsSync(USERS_FILE)) {
+            const raw = fs.readFileSync(USERS_FILE, 'utf8');
+            const users = JSON.parse(raw || '[]');
+            return users.map(u => ({
+                username: u.username,
+                password: u.password,
+                role: u.username === 'sziszi' ? 'superadmin' : normalizeRole(u.role)
+            }));
+        }
+    } catch (e) {
+        console.error('Failed to read users:', e);
+    }
+    return [];
+};
+
+const saveUsers = (users) => {
+    const safe = users.map(u => ({
+        username: u.username,
+        password: u.password,
+        role: u.username === 'sziszi' ? 'superadmin' : normalizeRole(u.role)
+    }));
+    fs.writeFileSync(USERS_FILE, JSON.stringify(safe, null, 2));
 };
 
 const deleteFileIfExists = async (absolutePath) => {
@@ -82,16 +176,23 @@ const deleteFileIfExists = async (absolutePath) => {
 };
 
 const cleanupMedia = async (item) => {
-    const targets = [];
+    const targets = new Set();
 
     if (item.image) {
         const imgPath = resolveUploadPath(item.image);
-        if (imgPath) targets.push(imgPath);
+        if (imgPath) targets.add(imgPath);
+    }
+
+    if (Array.isArray(item.images)) {
+        item.images.forEach((img) => {
+            const imgPath = resolveUploadPath(img);
+            if (imgPath) targets.add(imgPath);
+        });
     }
 
     if (item.attachment) {
         const attachmentPath = resolveUploadPath(item.attachment);
-        if (attachmentPath) targets.push(attachmentPath);
+        if (attachmentPath) targets.add(attachmentPath);
     }
 
     for (const filePath of targets) {
@@ -120,10 +221,12 @@ const uploadDoc = multer({ storage: docStorage });
 
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    const validUser = process.env.ADMIN_USERNAME || 'admin';
-    const validPass = process.env.ADMIN_PASSWORD || 'changeme';
-    if (username === validUser && password === validPass) {
-        res.json({ success: true });
+    const users = loadUsers();
+    const match = users.find(u => u.username === username && u.password === password);
+    if (match) {
+        const effectiveRole = match.username === 'sziszi' ? 'superadmin' : normalizeRole(match.role);
+        appendAudit({ type: 'login', user: username, message: 'Sikeres bejelentkezés' });
+        res.json({ success: true, role: effectiveRole });
     } else {
         res.status(401).json({ success: false });
     }
@@ -136,6 +239,96 @@ app.get('/api/news', (req, res) => {
     } catch (e) { res.json([]); }
 });
 
+app.get('/api/settings', (_req, res) => {
+    const settings = loadSettings();
+    res.json(settings);
+});
+
+app.post('/api/settings', (req, res) => {
+    try {
+        const { showClock, theme } = req.body || {};
+        const safeSettings = {
+            showClock: showClock !== false,
+            theme: theme === 'light' ? 'light' : 'dark'
+        };
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(safeSettings, null, 2));
+        res.json(safeSettings);
+    } catch (e) {
+        console.error('Failed to save settings:', e);
+        res.status(500).json({ error: 'Beállítások mentése sikertelen.' });
+    }
+});
+
+// --- AUDIT LOG ---
+app.get('/api/audit', (_req, res) => {
+    const list = loadAudit();
+    res.json(list);
+});
+
+app.post('/api/audit', (req, res) => {
+    const { type, user, headline, message } = req.body || {};
+    appendAudit({ type, user, headline, message });
+    res.json({ success: true });
+});
+
+// --- USER MANAGEMENT ---
+app.get('/api/users', (_req, res) => {
+    const users = loadUsers();
+    res.json(users.map(u => ({ username: u.username, role: normalizeRole(u.role) })));
+});
+
+app.post('/api/users', (req, res) => {
+    const { username, password, role } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'Felhasználónév és jelszó kötelező.' });
+    const users = loadUsers();
+    if (users.some(u => u.username === username)) {
+        return res.status(400).json({ error: 'Már létező felhasználónév.' });
+    }
+    const nextRole = username === 'sziszi' ? 'superadmin' : normalizeRole(role);
+    if (nextRole === 'superadmin' && username !== 'sziszi') {
+        return res.status(400).json({ error: 'A superadmin szerep csak a sziszi felhasználónak engedélyezett.' });
+    }
+    users.push({ username, password, role: nextRole });
+    saveUsers(users);
+    res.json({ success: true });
+});
+
+app.put('/api/users/:username', (req, res) => {
+    const current = req.params.username;
+    const { username, password, role } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: 'Felhasználónév és jelszó kötelező.' });
+    const users = loadUsers();
+    const idx = users.findIndex(u => u.username === current);
+    if (idx === -1) return res.status(404).json({ error: 'Felhasználó nem található.' });
+    if (current !== username && users.some(u => u.username === username)) {
+        return res.status(400).json({ error: 'A megadott új felhasználónév már foglalt.' });
+    }
+    const nextRole = username === 'sziszi' ? 'superadmin' : normalizeRole(role);
+    if (nextRole === 'superadmin' && username !== 'sziszi') {
+        return res.status(400).json({ error: 'A superadmin szerep csak a sziszi felhasználónak engedélyezett.' });
+    }
+    users[idx] = { username, password, role: nextRole };
+    saveUsers(users);
+    res.json({ success: true });
+});
+
+app.delete('/api/users/:username', (req, res) => {
+    const target = req.params.username;
+    if (target === 'sziszi') {
+        return res.status(400).json({ error: 'A sziszi felhasználó nem törölhető.' });
+    }
+    const users = loadUsers();
+    const updated = users.filter(u => u.username !== target);
+    if (updated.length === users.length) {
+        return res.status(404).json({ error: 'Felhasználó nem található.' });
+    }
+    if (updated.length === 0) {
+        return res.status(400).json({ error: 'Nem törölhető az utolsó felhasználó.' });
+    }
+    saveUsers(updated);
+    res.json({ success: true });
+});
+
 app.post('/api/news', (req, res) => {
     try {
         const list = req.body;
@@ -146,6 +339,13 @@ app.post('/api/news', (req, res) => {
                 }
                 if (item.headline.length > 15) {
                     return res.status(400).json({ error: "Videó címe maximum 15 karakter lehet." });
+                }
+            } else if (item.type === 'Képek' || item.type === 'Kép') {
+                if (item.images && item.images.length > 10) {
+                    return res.status(400).json({ error: "Albumonként legfeljebb 10 kép tölthető fel." });
+                }
+                if (item.headline && item.headline.length > 50) {
+                    return res.status(400).json({ error: "A címsor maximum 50 karakter lehet Képek típusnál." });
                 }
             } else {
                 if (item.headline && item.headline.length > 30) {
