@@ -982,7 +982,7 @@
                     return;
                 }
 
-                const canManage = currentRole === 'admin' || currentRole === 'user';
+                const canManage = currentRole === 'admin' || currentRole === 'user' || currentRole === 'superadmin';
                 list.innerHTML = data.map((item) => {
                     const isVideo = item.type === 'Videó';
                     const isImageOnly = item.type === 'Kép' || item.type === 'Képek';

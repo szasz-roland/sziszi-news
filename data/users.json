@@ -3,10 +3,5 @@
     "username": "sziszi",
     "password": "sziszi",
     "role": "superadmin"
-  },
-  {
-    "username": "sziraki.beatrix",
-    "password": "123",
-    "role": "user"
   }
 ]
