@@ -45,11 +45,17 @@ const AUDIT_FILE = path.join(DATA_DIR, 'audit.json');
 const PUBLIC_ROOT = path.resolve(__dirname, 'public');
 
 // Ensure directories exist
-[DATA_DIR, IMAGE_UPLOAD_DIR, VIDEO_UPLOAD_DIR, DOC_UPLOAD_DIR].forEach(dir => {
+const ensureDir = (dir) => {
     try {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    } catch (e) { console.error(`Error creating ${dir}:`, e); }
-});
+        return true;
+    } catch (e) {
+        console.error(`Error creating ${dir}:`, e);
+        return false;
+    }
+};
+
+[DATA_DIR, IMAGE_UPLOAD_DIR, VIDEO_UPLOAD_DIR, DOC_UPLOAD_DIR].forEach(ensureDir);
 
 // Seed default image into public/data if present in repo root
 try {
@@ -216,6 +222,14 @@ const docStorage = multer.diskStorage({
 const uploadImage = multer({ storage: imageStorage });
 const uploadVideo = multer({ storage: videoStorage });
 const uploadDoc = multer({ storage: docStorage });
+
+// Ensure upload destinations exist before handling files
+const ensureUploadRoots = () => {
+    const okImages = ensureDir(IMAGE_UPLOAD_DIR);
+    const okVideos = ensureDir(VIDEO_UPLOAD_DIR);
+    const okDocs = ensureDir(DOC_UPLOAD_DIR);
+    return okImages && okVideos && okDocs;
+};
 
 // --- ROUTES ---
 
@@ -397,54 +411,77 @@ app.delete('/api/news', async (req, res) => {
     }
 });
 
-app.post('/api/upload/image', uploadImage.single('image'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file' });
-    res.json({ success: true, url: `/uploads/images/${req.file.filename}` });
-});
-
-app.post('/api/upload/video', uploadVideo.single('video'), (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file' });
-    res.json({ success: true, url: `/uploads/videos/${req.file.filename}` });
-});
-
-app.post('/api/upload/document', uploadDoc.single('document'), async (req, res) => {
-    try {
+app.post('/api/upload/image', (req, res) => {
+    if (!ensureUploadRoots()) return res.status(500).json({ error: 'Feltöltési könyvtár nem hozható létre.' });
+    uploadImage.single('image')(req, res, (err) => {
+        if (err) {
+            console.error('Image upload failed:', err);
+            return res.status(500).json({ error: 'Kép feltöltése sikertelen.' });
+        }
         if (!req.file) return res.status(400).json({ error: 'No file' });
+        res.json({ success: true, url: `/uploads/images/${req.file.filename}` });
+    });
+});
 
-        const filePath = req.file.path;
-        const ext = path.extname(req.file.originalname || '').toLowerCase();
+app.post('/api/upload/video', (req, res) => {
+    if (!ensureUploadRoots()) return res.status(500).json({ error: 'Feltöltési könyvtár nem hozható létre.' });
+    uploadVideo.single('video')(req, res, (err) => {
+        if (err) {
+            console.error('Video upload failed:', err);
+            return res.status(500).json({ error: 'Videó feltöltése sikertelen.' });
+        }
+        if (!req.file) return res.status(400).json({ error: 'No file' });
+        res.json({ success: true, url: `/uploads/videos/${req.file.filename}` });
+    });
+});
 
-        let text = '';
-        let tableData = null;
+app.post('/api/upload/document', async (req, res) => {
+    if (!ensureUploadRoots()) return res.status(500).json({ error: 'Feltöltési könyvtár nem hozható létre.' });
 
-        if (ext === '.pdf') {
-            const data = await fsPromises.readFile(filePath);
-            const parsed = await pdfParse(data);
-            text = (parsed.text || '').trim();
-        } else if (ext === '.docx') {
-            const parsed = await mammoth.extractRawText({ path: filePath });
-            text = (parsed.value || '').trim();
-        } else if (ext === '.txt') {
-            text = (await fsPromises.readFile(filePath, 'utf8')).toString();
-        } else if (ext === '.xlsx' || ext === '.csv') {
-            const workbook = XLSX.readFile(filePath);
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            tableData = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) || [];
-        } else {
-            return res.status(400).json({ error: 'Nem támogatott dokumentumtípus. (pdf, docx, xlsx, csv, txt)' });
+    uploadDoc.single('document')(req, res, async (err) => {
+        if (err) {
+            console.error('Document upload failed:', err);
+            return res.status(500).json({ error: 'Dokumentum feltöltése sikertelen.' });
         }
 
-        // Avoid writing unusably long content back to the caller
-        if (text && text.length > MAX_BODY_LENGTH) {
-            text = text.slice(0, MAX_BODY_LENGTH);
-        }
+        try {
+            if (!req.file) return res.status(400).json({ error: 'No file' });
 
-        return res.json({ success: true, url: `/uploads/docs/${req.file.filename}`, text, tableData });
-    } catch (e) {
-        console.error('Document upload failed:', e);
-        return res.status(500).json({ error: 'Dokumentum feldolgozása sikertelen.' });
-    }
+            const filePath = req.file.path;
+            const ext = path.extname(req.file.originalname || '').toLowerCase();
+
+            let text = '';
+            let tableData = null;
+
+            if (ext === '.pdf') {
+                const data = await fsPromises.readFile(filePath);
+                const parsed = await pdfParse(data);
+                text = (parsed.text || '').trim();
+            } else if (ext === '.docx') {
+                const parsed = await mammoth.extractRawText({ path: filePath });
+                text = (parsed.value || '').trim();
+            } else if (ext === '.txt') {
+                text = (await fsPromises.readFile(filePath, 'utf8')).toString();
+            } else if (ext === '.xlsx' || ext === '.csv') {
+                const workbook = XLSX.readFile(filePath);
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                tableData = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) || [];
+            } else {
+                return res.status(400).json({ error: 'Nem támogatott dokumentumtípus. (pdf, docx, xlsx, csv, txt)' });
+            }
+
+            // Avoid writing unusably long content back to the caller
+            if (text && text.length > MAX_BODY_LENGTH) {
+                text = text.slice(0, MAX_BODY_LENGTH);
+            }
+
+            return res.json({ success: true, url: `/uploads/docs/${req.file.filename}`, text, tableData });
+        } catch (e) {
+            console.error('Document processing failed:', e);
+            return res.status(500).json({ error: 'Dokumentum feldolgozása sikertelen.' });
+        }
+    });
 });
 
 // Health check for container orchestration

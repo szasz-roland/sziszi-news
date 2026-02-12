@@ -17,10 +17,16 @@ npm install
 
 # fejlesztői futtatás
 npm start  # alap: http://localhost:3000
-
-# Docker (ha docker compose v2 elérhető)
-
 ```
+
+## Docker futtatás (ajánlott feltöltésekhez)
+```bash
+docker-compose up --build
+```
+
+- A `./data` és `./uploads` mappák volume-ként kerülnek bekötésre a konténerben `/app/public/data` és `/app/public/uploads` útvonalra.
+- A szerver minden induláskor újra létrehozza a hiányzó almappákat (`images`, `videos`, `docs`), így nem kell előre létrehozni őket.
+- Ha a feltöltés mégis hibázik, nézd meg a konténer logját: `Image upload failed:` vagy `Feltöltési könyvtár nem hozható létre.` sorok jelzik a jogosultsági/útvonal gondokat.
 
 ## Adatok és tárolás
 - Hírek: `public/data/news.json`
