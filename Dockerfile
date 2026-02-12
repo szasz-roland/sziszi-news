@@ -27,7 +27,7 @@ COPY init.sh /app/init.sh
 RUN chmod +x /app/init.sh
 
 # Expose port
-EXPOSE 3000
+EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

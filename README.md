@@ -16,7 +16,7 @@ Képernyős hírkijelző Node.js/Express alapon, admin felülettel és szerepkö
 npm install
 
 # fejlesztői futtatás
-npm start  # alap: http://localhost:3000
+npm start  # alap: http://localhost
 ```
 
 ## Docker futtatás (ajánlott feltöltésekhez)

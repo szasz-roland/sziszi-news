@@ -17,7 +17,7 @@ process.on('uncaughtException', (err) => {
 });
 
 const app = express();
-const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 80;
 
 app.use(cors());
 // Allow CDN assets (React/Tailwind/Babel) and external images; disable default CSP/COEP that blocked display page
