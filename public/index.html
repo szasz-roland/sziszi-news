@@ -353,7 +353,7 @@
                             )}
 
                             {(() => {
-                                const images = (item.images && item.images.length > 0 ? item.images.slice(0, 10) : [item.image || '']).filter(Boolean);
+                                const images = (item.images && item.images.length > 0 ? item.images : [item.image || '']).filter(Boolean);
                                 const len = images.length || 1;
                                 const current = galleryFrame % len;
                                 const showCard = (i) => {

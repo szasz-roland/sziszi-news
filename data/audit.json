@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "type": "news_created",
+    "user": "sziraki.beatrix",
+    "headline": "Támogatóink",
+    "message": "",
+    "timestamp": "2026-02-12T19:29:34.161Z"
+  },
+  {
+    "type": "login",
+    "user": "sziraki.beatrix",
+    "headline": "",
+    "message": "Sikeres bejelentkezés",
+    "timestamp": "2026-02-12T19:21:42.436Z"
+  }
+]

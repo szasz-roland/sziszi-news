@@ -341,9 +341,6 @@ app.post('/api/news', (req, res) => {
                     return res.status(400).json({ error: "Videó címe maximum 15 karakter lehet." });
                 }
             } else if (item.type === 'Képek' || item.type === 'Kép') {
-                if (item.images && item.images.length > 10) {
-                    return res.status(400).json({ error: "Albumonként legfeljebb 10 kép tölthető fel." });
-                }
                 if (item.headline && item.headline.length > 50) {
                     return res.status(400).json({ error: "A címsor maximum 50 karakter lehet Képek típusnál." });
                 }

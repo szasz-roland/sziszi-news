@@ -27,7 +27,7 @@ echo \
 echo "--- Installing Docker Engine and Docker Compose ---"
 sudo apt-get update
 # Install Docker Engine, CLI, containerd, and the docker-compose-plugin
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-compose
 
 # 4. Install Node.js (LTS Version)
 echo "--- Setting up NodeSource Repository (LTS) ---"
