@@ -46,9 +46,7 @@ Perzisztencia konténerben: kösd ezeket volume-ra.
 - `GET/POST /api/audit` (audit csak superadmin láthatja)
 
 ## Admin felület
-- Elérés: `/admin`
-- Tabs: Hírek, Beállítások, Felhasználók, Napló (csak superadmin)
-- Téma váltó, óra kapcsoló, user törlés megerősítéssel.
+ - Minden bejegyzésnél egyedi törlés gomb (admin/user/superadmin szerepkörökkel látható).
 
 ## Build/Deploy tippek
 - Prod előtt tegyél reverse proxy-t (Nginx/Traefik) TLS-sel, IP-szűréssel az `/admin`-ra.
@@ -56,4 +54,4 @@ Perzisztencia konténerben: kösd ezeket volume-ra.
 
 ## Licenc
 MIT – lásd [LICENSE](LICENSE).
-Mielőtt elkezdené, győződjön meg arról, hogy az alábbiak telepítve vannak:
+npm start  # alap: http://localhost (port 80)
