@@ -334,6 +334,26 @@
         let saveSettingsTimeout = null;
         let selectedImageFiles = []; // For Képek album previews/removal
 
+        const alertUploadError = (err) => {
+            const message = (err && err.message) ? err.message : 'Feltöltés sikertelen.';
+            Swal.fire({ icon: 'error', title: 'Hiba', text: message });
+        };
+
+        const uploadFile = async (url, fieldName, file) => {
+            const fd = new FormData();
+            fd.append(fieldName, file);
+            const res = await fetch(url, { method: 'POST', body: fd });
+            let data = {};
+            try { data = await res.json(); } catch (_) { /* ignore parse */ }
+            if (!res.ok) {
+                throw new Error(data.error || 'Feltöltés sikertelen.');
+            }
+            if (!data.url) {
+                throw new Error('A feltöltés válasza nem tartalmaz URL-t.');
+            }
+            return data.url;
+        };
+
         const limitTableRows = (tableData) => {
             if (!tableData || !tableData.length) return tableData;
             const headers = tableData[0];
@@ -895,6 +915,7 @@
             } catch (err) {
                 lastDocResult = null;
                 if (docStatus) docStatus.innerText = 'Hiba: ' + err.message;
+                alertUploadError(err);
             }
         }
 
@@ -1110,25 +1131,16 @@
                     if (isImageOnly && t === 'Képek' && selectedImageFiles.length > 0) {
                         const files = selectedImageFiles;
                         for (const imgFile of files) {
-                            const fd = new FormData();
-                            fd.append('image', imgFile);
-                            const upRes = await fetch('/api/upload/image', { method: 'POST', body: fd });
-                            const upData = await upRes.json();
-                            if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
-                            galleryUrls.push(upData.url);
+                            const url = await uploadFile('/api/upload/image', 'image', imgFile);
+                            galleryUrls.push(url);
                         }
                         finalMediaUrl = galleryUrls[0];
                     } else if (f) {
-                        const fd = new FormData();
                         const uploadUrl = isVideo ? '/api/upload/video' : '/api/upload/image';
                         const fieldName = isVideo ? 'video' : 'image';
-                        fd.append(fieldName, f);
-                        
-                        const upRes = await fetch(uploadUrl, { method: 'POST', body: fd });
-                        const upData = await upRes.json();
-                        if(!upRes.ok) throw new Error(upData.error || "A feltöltés sikertelen");
-                        finalMediaUrl = upData.url;
-                        galleryUrls = [upData.url];
+                        const url = await uploadFile(uploadUrl, fieldName, f);
+                        finalMediaUrl = url;
+                        galleryUrls = [url];
                     }
                 }
 
@@ -1183,6 +1195,10 @@
                 loadNews();
                 logAudit('news_created', { headline: h });
                 Swal.fire({ icon: 'success', title: 'Sikeres', text: 'Sikeres közzététel!' });
+            } catch (err) {
+                console.error('Publish failed:', err);
+                const message = (err && err.message) ? err.message : 'Ismeretlen hiba a közzétételnél.';
+                Swal.fire({ icon: 'error', title: 'Hiba', text: message });
             } finally {
                 btn.innerText = "KÖZZÉTÉTEL";
                 btn.disabled = false;

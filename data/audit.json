@@ -1,6 +1,48 @@
 [
   {
     "type": "news_created",
+    "user": "sziszi",
+    "headline": "Támogatóink",
+    "message": "",
+    "timestamp": "2026-02-12T19:58:47.854Z"
+  },
+  {
+    "type": "news_created",
+    "user": "sziszi",
+    "headline": "alksdfélkajdsfélkajfds",
+    "message": "",
+    "timestamp": "2026-02-12T19:57:58.218Z"
+  },
+  {
+    "type": "news_created",
+    "user": "sziszi",
+    "headline": "támogatóink",
+    "message": "",
+    "timestamp": "2026-02-12T19:57:32.127Z"
+  },
+  {
+    "type": "news_created",
+    "user": "sziszi",
+    "headline": "asd",
+    "message": "",
+    "timestamp": "2026-02-12T19:57:09.997Z"
+  },
+  {
+    "type": "login",
+    "user": "sziszi",
+    "headline": "",
+    "message": "Sikeres bejelentkezés",
+    "timestamp": "2026-02-12T19:57:00.975Z"
+  },
+  {
+    "type": "login",
+    "user": "sziszi",
+    "headline": "",
+    "message": "Sikeres bejelentkezés",
+    "timestamp": "2026-02-12T19:52:33.717Z"
+  },
+  {
+    "type": "news_created",
     "user": "sziraki.beatrix",
     "headline": "Támogatóink",
     "message": "",

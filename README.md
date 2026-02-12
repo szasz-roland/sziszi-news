@@ -25,7 +25,7 @@ docker-compose up --build
 ```
 
 - A `./data` és `./uploads` mappák volume-ként kerülnek bekötésre a konténerben `/app/public/data` és `/app/public/uploads` útvonalra.
-- A szerver minden induláskor újra létrehozza a hiányzó almappákat (`images`, `videos`, `docs`), így nem kell előre létrehozni őket.
+- Induláskor az init script a konténerben létrehozza az almappákat (`images`, `videos`, `docs`) és `chown -R node:node`-ot futtat a mountolt `data` és `uploads` könyvtárakra, így nem kell kézzel állítgatni.
 - Ha a feltöltés mégis hibázik, nézd meg a konténer logját: `Image upload failed:` vagy `Feltöltési könyvtár nem hozható létre.` sorok jelzik a jogosultsági/útvonal gondokat.
 
 ## Adatok és tárolás

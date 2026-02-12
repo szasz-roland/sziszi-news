@@ -4,10 +4,11 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Install dependencies for better security and performance
+# Install minimal runtime helpers
 RUN apk add --no-cache \
-    tini \
-    && rm -rf /var/cache/apk/*
+  tini \
+  su-exec \
+  && rm -rf /var/cache/apk/*
 
 # Copy package files
 COPY package*.json ./
@@ -18,12 +19,12 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy application files
 COPY . .
 
-# Create necessary directories with correct permissions
-RUN mkdir -p data uploads/images uploads/videos uploads/texts && \
-    chown -R node:node /app
+# Create necessary directories
+RUN mkdir -p data uploads/images uploads/videos uploads/docs
 
-# Switch to non-root user
-USER node
+# Copy init script
+COPY init.sh /app/init.sh
+RUN chmod +x /app/init.sh
 
 # Expose port
 EXPOSE 3000
@@ -32,8 +33,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Use tini to handle signals properly
-ENTRYPOINT ["/sbin/tini", "--"]
-
-# Start application
-CMD ["node", "server.js"]
+# Use tini and bootstrap script to fix permissions before dropping privileges
+ENTRYPOINT ["/sbin/tini", "--", "/app/init.sh"]
